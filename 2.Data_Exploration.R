@@ -27,7 +27,7 @@ library(foreign) # for read dbf
 #### These are the BTO species traits for only the n = 87 species for which we have more than 50 records to run the SDMs with
 #### according to an email from Konstans on the 21st June 2021
 
-setwd("D:/TheseSwansea/TraitStudy/code_Konstans")
+setwd("E:/TheseSwansea/TraitStudy/code_Konstans")
 species_traits <- read.csv('SpecTrait_122021.csv', stringsAsFactors = FALSE, row.names = 1)
 
 #### reading the new range shift data provided by Konstans and calculated using the SDMs
@@ -47,7 +47,7 @@ species_traits <- merge(species_traits, range_shifts)
 #### The spatial scaling of food web structure across European biogeographical regions. 
 #### Ecography, 44: 653-664. https://doi.org/10.1111/ecog.05229
 
-setwd("D:/TheseSwansea/TraitStudy/code_Miguel")
+setwd("E:/TheseSwansea/TraitStudy/code_Miguel")
 
 metaweb_europe <- read.graph('metaweb-europe.graphml', format = 'graphml')
 m <- as_adjacency_matrix(metaweb_europe, attr = 'copresence', sparse=FALSE)
@@ -65,10 +65,10 @@ setdiff(species_traits$scientific_name_ET_, V(metaweb_europe)$name)
 #### distributions from the European bioregions paper and overlay on it a layer containing the map
 #### of the UK to extract the species only present there
 
-source("D:/TheseSwansea/Galiana2021_network-area-europe-master/whois-function.R")
-source("D:/TheseSwansea/Galiana2021_network-area-europe-master/utils.R")
+source("E:/TheseSwansea/Galiana2021_network-area-europe-master/whois-function.R")
+source("E:/TheseSwansea/Galiana2021_network-area-europe-master/utils.R")
 
-setwd("D:/TheseSwansea/Galiana2021_network-area-europe-master")
+setwd("E:/TheseSwansea/Galiana2021_network-area-europe-master")
 
 europeRaster <- raster(x="./mask10k/reference_grid_10km.img")
 cells_info <- read.dbf('./mask10k/reference_grid_10km.img.vat.dbf')
@@ -87,21 +87,21 @@ cur_ids <- unlist(raster::extract(europeRaster, shape))
 cur_codes <- as.character(cells_info[which(cells_info$Value %in% cur_ids),]$PageName)
 
 ## get the master dtf
-load("D:/TheseSwansea/Galiana2021_network-area-europe-master/MASTER.bin10000_allhab_tresh0.RData")
+load("E:/TheseSwansea/Galiana2021_network-area-europe-master/MASTER.bin10000_allhab_tresh0.RData")
 
 region <- data.frame(PAGENAME = master$PAGENAME, SPP = 0)
 region$SPP <- 0
 region[which(region$PAGENAME %in% cur_codes),]$SPP <- 1
 
 
-setwd('D:/TheseSwansea/Galiana2021_network-area-europe-master/')
+setwd('E:/TheseSwansea/Galiana2021_network-area-europe-master/')
 bioregion_raster <- fun.dbf2raster(SPPPA = region, mask.dir = "./mask10k/")
 
 plot(bioregion_raster)
 
 #### from the master table (containing all species distributions) we filter out
 #### only those cells falling on the UK map
-#master = read.csv2("D:/TheseSwansea/Galiana2021_network-area-europe-master/master.csv")
+#master = read.csv2("E:/TheseSwansea/Galiana2021_network-area-europe-master/master.csv")
 
 cur_comm <- master[which(master$PAGENAME %in% cur_codes),]
 cur_comm[is.na(cur_comm)] <- 0
@@ -125,7 +125,7 @@ m_uk <- m[which(row.names(m) %in% uk_species), which(colnames(m) %in% uk_species
 #### and we can go back to our local working directory:
 #setwd("~/Documents/OneDrive - Swansea University/winners-losers")
 
-setwd("D:/TheseSwansea/TraitStudy/code_Miguel")
+setwd("E:/TheseSwansea/TraitStudy/code_Miguel")
 
 # some names don't correspond to the names in the metaweb
 species_traits$scientific_name_web <- species_traits$scientific_name_ET_
@@ -187,7 +187,7 @@ species_traits$scientific_name_web[is.na(species_traits$trophic_position)]
 #### historical / original habitat specificity). We use Shannon diversity to quantify habitat generality at the species level
 
 ## sdms vars come from script 1.BTO_breeding.atlas_range.shifts.r
-sdms_vars <- read.csv('D:/TheseSwansea/TraitStudy/Code_Konstans/df_SDM.varimp_122021.csv', stringsAsFactors = F, row.names = 1)
+sdms_vars <- read.csv('E:/TheseSwansea/TraitStudy/Code_Konstans/df_SDM.varimp_122021.csv', stringsAsFactors = F, row.names = 1)
 head(sdms_vars)
 
 ## How does the data look like?
@@ -248,6 +248,14 @@ pca_env <- prcomp(env, center = TRUE, scale = TRUE)
 #### this indicates that the first two components encapsulate 83% of the total variability. So we use those.
 summary(pca_env)
 biplot(pca_env)
+biplot(pca_env,  cex=c(0.2,0.8))
+# The following two lines get added to the plot.
+abline(h=0, col="grey", lty=4)
+abline(v=0, col="grey", lty=4)
+
+library(factoextra)
+var_env = get_pca_var(pca_env)
+
 pca_env$rotation
 
 ### The Kaiser’s rule (Kaiser-Guttman criterion) is a widely used method to evaluate the maximum number of linear 
@@ -273,7 +281,10 @@ species_traits$pc2_env <- NA
 species_traits[match(rownames(pca_env$x), species_traits$speccode),]$pc1_env <- as.numeric(pca.scores.x[,1])
 species_traits[match(rownames(pca_env$x), species_traits$speccode),]$pc2_env <- as.numeric(pca.scores.x[,2])
 
-factorloadings <- cor(env, pca.scores.x[,1:2])
+factorloadings <- data.frame(cor(env, pca.scores.x[,1:2]))
+names(factorloadings) = c('PC1', 'PC2')
+stargazer(var_env$cor, summary = F, type = "html", title = 'Correlation coefficient between the first two components and environmental variables')
+stargazer(get_eigenvalue(pca_env), summary = F, type = "html", title = 'Proportion of variance explained by each component - climatic variables')
 
 ### The factor loadings (line above) suggest that PC1 is highly negatively correlated to precipitation whereas 
 ### PC2 is highly negatively correlated to temperature
@@ -281,6 +292,11 @@ factorloadings <- cor(env, pca.scores.x[,1:2])
 ### We repeat the same procedure for the land cover variables
 
 pca_lc <- prcomp(lc, center = TRUE, scale = TRUE)
+var = get_pca_var(pca_lc)
+var
+
+
+
 
 #### this indicates that the first two components encapsulate 80% of the total variability. So we use those.
 summary(pca_lc)
@@ -308,9 +324,17 @@ species_traits[match(rownames(pca_lc$x), species_traits$speccode),]$pc1_lc <- pc
 species_traits[match(rownames(pca_lc$x), species_traits$speccode),]$pc2_lc <- pca.scores.x[,2]
 
 ### These factor loadings suggest PC1 is related to 'good' habitats and PC2 to 'destroyed' habitats
-factorloadings <- cor(lc, pca.scores.x[,1:2])
+factorloadings <- data.frame(cor(lc, pca.scores.x[,1:2]))
+names(factorloadings) = c('PC1', 'PC2')
+stargazer(var$cor, summary = F, type = "html", title = 'Correlation coefficient between the first two components and landcover variables')
+stargazer(get_eigenvalue(pca_lc), summary = F, type = "html", title = 'Proportion of variance explained by each component - landcover variables')
 
+g1 = fviz_eig(pca_lc, addlabels = TRUE, title = 'Landcover variables')
+g2 = fviz_eig(pca_env, addlabels = TRUE, title = 'Climatic variables')
+library(ggpubr)
+ggarrange(g1,g2)
 
+ggsave('ExplainedVariancePCA.jpeg', dpi = 600)
 
 ################################################################################
 ## MIGRATORY BEHAVIOUR
@@ -321,7 +345,7 @@ factorloadings <- cor(lc, pca.scores.x[,1:2])
 #### of the different species. We fetch these data here and add it to our analyses
 
 
-setwd("D:/TheseSwansea/TraitStudy/code_Miguel")
+setwd("E:/TheseSwansea/TraitStudy/code_Miguel")
 migratory_behaviour <- read.table('./specieslist3_1_migbehav_v1_0.txt', sep='\t', header = TRUE)
 
 species_traits$migratory <- migratory_behaviour[match(species_traits$scientific_name_ET_, migratory_behaviour$IOC3_1_Binomial),]$Migratory_status
@@ -347,5 +371,15 @@ summary(species_traits)
 ## 11/01/2022 : changed the indegree and outdegree using the right metaweb (UK not EU)
 ## 04/02/2022 : changed the trophic position using new function in utils (reran everything)
 write.csv(species_traits, "SpecTrait_04022022_159sp.csv")
+
+sp = read.csv("SpecTrait_04022022_159sp.csv")
+
+summary(species_traits$pc1_lc)
+summary(sp$pc1_lc)
+
+summary(species_traits$pc2_lc)
+summary(sp$pc2_lc)
+
+
 
 ################################################################################
