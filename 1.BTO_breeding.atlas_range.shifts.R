@@ -3,8 +3,8 @@
 ### SLIGHTLY MODIFIED CODE BY KONSTANS 
 
 
-setwd("E:/TheseSwansea/TraitStudy/code_Konstans")
-dir.analysis = "E:/TheseSwansea/TraitStudy/code_Konstans"
+setwd("E:/TheseSwansea/TraitStudy/Github/Range-shift-BTO-breeding-birds")
+
 
 # Load some important packages 
 library(raster)  # The raster library is the most useful package for importing and working with raster files
@@ -50,13 +50,13 @@ latlong <- "+init=epsg:4326"
 
 
 ## BTO Distribution data
-BTO_distrib <- read.csv("distributions.csv", header=T) # period, sp code, season and grid for GB and Ireland
+BTO_distrib <- read.csv("BTO.BreedingAtlas/distributions.csv", header=T) # period, sp code, season and grid for GB and Ireland
 
 ## BTO Species names data
-BTO_sp <- read.csv("species_lookup.csv", header=T)
+BTO_sp <- read.csv("BTO.BreedingAtlas/species_lookup.csv", header=T)
 
 ## BTO grid data
-BTO_grid <- read.csv("grid_square_coordinates_lookup.csv", header=T)
+BTO_grid <- read.csv("BTO.BreedingAtlas/grid_square_coordinates_lookup.csv", header=T)
 
 # 7302 species that winter in the UK and don't breed there
 length(which(!BTO_distrib$speccode[which(BTO_distrib$season == "W")]
@@ -131,9 +131,6 @@ Ngrid <- pivot_wider(Ngrid, id_cols = speccode, names_from = periodN, values_fro
 
 Spec <- as.tibble(BTO_sp)
 Spec  <- Spec %>%  left_join(Ngrid, by = c("speccode" = "speccode"))
-
-#Spec  <- Spec %>% filter(P.1>=20)
-#Spec  <- Spec %>% filter(P.1>=20)  #Spec  <- Spec %>% filter(P.1>=20 & P.2>=20 & P.3>=20) 
 Spec  <- Spec %>% filter(P.1>=50 & P.2>=50 & P.3>=50) 
 
 # Compute distributional core of species (north or south of the mean position of the all 100 km2 grid cells)
@@ -143,16 +140,6 @@ Distr.Core$distrib.core = ifelse(Distr.Core$lat_mean.P.1 > mean(Loc10$lat), "nor
 # 91   132 
 
 Spec <- left_join(Spec, Distr.Core)
-
-
-# species like oie cendrée / Greylag goose ou Hobby falcon have had a huge recent range expansion, nuthatches
-# super widespread species
-# for (i in unique(BTO_sp[which(BTO_sp$english_name %in% Spec[which(Spec$P.1>2450),]$english_name),]$speccode)){
-#   print(BTO_sp[which(BTO_sp$speccode == i),] )
-#   g = ggplot(data = sf_UK) + geom_sf() + geom_point(data = merge(Loc10, BTO_distrib[which(BTO_distrib$speccode ==i),]), aes(x = long, y = lat, colour = periodN), size = 1)
-#   print(g)
-#   print(Spec[which(Spec$english_name == BTO_sp[which(BTO_sp$speccode == i),]$english_name),])
-# }
 
 
 ## looking for marine species
@@ -176,7 +163,6 @@ df <- data.frame(dist_km = as.vector(d)/1000,
 
 ggplot() + 
   geom_point(data = df[sample(nrow(df), 0.1*nrow(df)),], aes(x = X, y = Y, colour = ifelse(dist_km<10,1,0)), size = .5) 
-
 
 write.csv(df, "DistanceToCoast_BTO_160sp_1.csv")
 
@@ -237,7 +223,7 @@ for (i in seq(2,length(split_names),2)){
 
 # transforming outdated scientific names for birds in the migration dtf into updated ones so they fit w/ sp traits dtf
 # first for the species where there is no confusion on which species name needs changing (i.e. single sp ressembling the original name)
-DatMigr$scientific_name = DatMigr$scientific_name_ET
+ET$scientific_name = DatMigr$scientific_name_ET
 
 names = setdiff(Spec$scientific_name,DatMigr$scientific_name)
 
@@ -303,7 +289,7 @@ spec_speccode <- Spec$speccode
 
 ######
 # CRU climate data
-setwd("E:/TheseSwansea/TraitStudy/code_Konstans/CRU_Climate")
+setwd("E:/TheseSwansea/TraitStudy/Github/Range-shift-BTO-breeding-birds/CRU_Climate/")
 
 
 # Load the CRU TS dataset into R as rasterBrick
@@ -382,7 +368,7 @@ ggplot() + geom_raster(data = df_tmp_seas.1_P.1, aes(x = x, y = y, fill=layer))
 ######
 # HILDA historical land use (http://www.geo-informatie.nl/fuchs003/#)
 
-setwd("E:/Bioclim/HILDA_v2._LandUseChangesEurope")
+setwd("E:/TheseSwansea/TraitStudy/Github/Range-shift-BTO-breeding-birds/HILDA_v2._LandUseChangesEurope")
 
 #lu_P.1_st <- read_stars("./Gross_Final_1km_EU27CH_TIFF/eu27ch1960.tif")
 #lu_P.1_st <- st_transform(lu_P.1_st, crs= 4326)
@@ -460,9 +446,12 @@ for(p in 1:nloc){
 	Loc10$pSettlem_P.3[p] <- length(which(vals_P.3==1)) / length(vals_P.3)
 }
 
-## Save Loc10 file
-setwd(dir.analysis)
-setwd("E:/TheseSwansea/TraitStudy/code_Konstans")
+
+#save(Loc10, file="Loc10.RData")
+
+#load("Loc10.RData")
+
+
 Loc10_long1 = pivot_longer(Loc10,4:6, names_to = 'tmp_seas1')
 Loc10_long2 = pivot_longer(Loc10,7:9, names_to = 'tmp_seas2')
 Loc10_long3 = pivot_longer(Loc10,10:12, names_to = 'pre_seas1')
@@ -479,12 +468,11 @@ ggarrange(g1,g2,g3,g4)
 ggsave('ClimaticVariationAcrossPeriods.jpeg')
 
 ##############################################################
-## land use
+## land use and climate change across the three time periods
 
 #################
 ## FIGURE S3 and S4
 
-# mieux qu'un boxplot pour illuster la variation
 par(mfrow = c(1,4))
 
 summary(Loc10)
@@ -548,10 +536,6 @@ box()
 
 ggsave('LandUseVariationAcrossPeriods.newplots.jpeg')
 
-
-#save(Loc10, file="Loc10.RData")
-
-#load("Loc10.RData")
 
 # Environmental predictor names
 env.predictor_names <- c("tmp_seas.1", "tmp_seas.2", "pre_seas.1", "pre_seas.2", "pForest", "pGrass", "pCrop", "pSettlem")
@@ -625,27 +609,6 @@ for(sp in paste0("Sp",spec_speccode)){
 }
 
 
-## Assemble SDM variable importance output in summary files
-##for(p in 1:nP){
-##	for(sp in paste0("Sp",spec_speccode)){
-##
-##	# Prediction/ ensemble from sdm output
-##	setwd(paste0(dir.analysis, "/sdm_output"))
-##	model <- read.sdm(paste0('model_P.', p, '_', sp,'.sdm'))
-##	# Get variable importantce
-##  	varimp <- getVarImp(model)@varImportanceMean
-##	df_varimp <- data.frame(species = sp, envpredictor = env.predictor_names, period = paste0('P.', p),
-##				AUCtest = varimp$AUCtest$AUCtest, AUCtest_lower = varimp$AUCtest$lower, AUCtest_upper = varimp$AUCtest$upper,
-##				corTest = varimp$corTest$corTest, corTest_lower = varimp$corTest$lower, corTest_upper = varimp$corTest$upper)
-##
-##	if(!exists("tble_SDM.varimp")){
-##		tble_SDM.varimp <- df_varimp
-##	}else{
-##		tble_SDM.varimp <- rbind(tble_SDM.varimp, df_varimp)
-##	}
-##
-##	}
-##}
 
 ###########################################################
 
@@ -756,8 +719,7 @@ for(i in 1:nSpec){
 }
 
 ## Save
-setwd(dir.analysis)
-# save(df_rangeshift, file="df_rangeshift.RData")
+
 write.csv(df_rangeshift, file="df_rangeshift_012022_km_160sp.csv")
 
 #load("df_rangeshift.RData")

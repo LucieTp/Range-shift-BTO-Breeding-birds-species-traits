@@ -27,7 +27,7 @@ library(foreign) # for read dbf
 #### These are the BTO species traits for only the n = 87 species for which we have more than 50 records to run the SDMs with
 #### according to an email from Konstans on the 21st June 2021
 
-setwd("E:/TheseSwansea/TraitStudy/code_Konstans")
+setwd("E:/TheseSwansea/TraitStudy/Github/Range-shift-BTO-breeding-birds")
 species_traits <- read.csv('SpecTrait_122021.csv', stringsAsFactors = FALSE, row.names = 1)
 
 #### reading the new range shift data provided by Konstans and calculated using the SDMs
@@ -47,7 +47,6 @@ species_traits <- merge(species_traits, range_shifts)
 #### The spatial scaling of food web structure across European biogeographical regions. 
 #### Ecography, 44: 653-664. https://doi.org/10.1111/ecog.05229
 
-setwd("E:/TheseSwansea/TraitStudy/code_Miguel")
 
 metaweb_europe <- read.graph('metaweb-europe.graphml', format = 'graphml')
 m <- as_adjacency_matrix(metaweb_europe, attr = 'copresence', sparse=FALSE)
@@ -65,13 +64,11 @@ setdiff(species_traits$scientific_name_ET_, V(metaweb_europe)$name)
 #### distributions from the European bioregions paper and overlay on it a layer containing the map
 #### of the UK to extract the species only present there
 
-source("E:/TheseSwansea/Galiana2021_network-area-europe-master/whois-function.R")
-source("E:/TheseSwansea/Galiana2021_network-area-europe-master/utils.R")
+source("whois-function.R")
+source("utils.R")
 
-setwd("E:/TheseSwansea/Galiana2021_network-area-europe-master")
-
-europeRaster <- raster(x="./mask10k/reference_grid_10km.img")
-cells_info <- read.dbf('./mask10k/reference_grid_10km.img.vat.dbf')
+europeRaster <- raster(x="mask10k/reference_grid_10km.img")
+cells_info <- read.dbf('mask10k/reference_grid_10km.img.vat.dbf')
 
 ########################################################################################
 
@@ -79,24 +76,17 @@ shape <- ne_countries(scale = "medium", country = "United Kingdom", returnclass 
 shape <- st_transform(shape, crs(europeRaster))
 
 #### Plot the shape to make sure it corresponds to the UK
-pdf(file='uk-shape.pdf')
-plot(shape)
-dev.off()
-
 cur_ids <- unlist(raster::extract(europeRaster, shape))
 cur_codes <- as.character(cells_info[which(cells_info$Value %in% cur_ids),]$PageName)
 
 ## get the master dtf
-load("E:/TheseSwansea/Galiana2021_network-area-europe-master/MASTER.bin10000_allhab_tresh0.RData")
+load("MASTER.bin10000_allhab_tresh0.RData")
 
 region <- data.frame(PAGENAME = master$PAGENAME, SPP = 0)
 region$SPP <- 0
 region[which(region$PAGENAME %in% cur_codes),]$SPP <- 1
 
-
-setwd('E:/TheseSwansea/Galiana2021_network-area-europe-master/')
 bioregion_raster <- fun.dbf2raster(SPPPA = region, mask.dir = "./mask10k/")
-
 plot(bioregion_raster)
 
 #### from the master table (containing all species distributions) we filter out
@@ -125,11 +115,10 @@ m_uk <- m[which(row.names(m) %in% uk_species), which(colnames(m) %in% uk_species
 #### and we can go back to our local working directory:
 #setwd("~/Documents/OneDrive - Swansea University/winners-losers")
 
-setwd("E:/TheseSwansea/TraitStudy/code_Miguel")
 
 # some names don't correspond to the names in the metaweb
-species_traits$scientific_name_web <- species_traits$scientific_name_ET_
-species_traits[which(is.na(match(species_traits$scientific_name_ET_, row.names(m_uk)))),]$scientific_name_web <- c("Branta_canadensis","Stercorarius_skua","Saxicola_torquata")
+species_traits$scientific_name_web <- str_replace(species_traits$scientific_name_ET,' ', '_')
+species_traits[which(is.na(match(species_traits$scientific_name_web, row.names(m_uk)))),]$scientific_name_web <- c("Branta_canadensis","Stercorarius_skua","Saxicola_torquata")
 # can't find canada goose in the metaweb Branta canadensis
 
 library(stringr)
@@ -187,7 +176,7 @@ species_traits$scientific_name_web[is.na(species_traits$trophic_position)]
 #### historical / original habitat specificity). We use Shannon diversity to quantify habitat generality at the species level
 
 ## sdms vars come from script 1.BTO_breeding.atlas_range.shifts.r
-sdms_vars <- read.csv('E:/TheseSwansea/TraitStudy/Code_Konstans/df_SDM.varimp_122021.csv', stringsAsFactors = F, row.names = 1)
+sdms_vars <- read.csv('df_SDM.varimp_122021.csv', stringsAsFactors = F, row.names = 1)
 head(sdms_vars)
 
 ## How does the data look like?

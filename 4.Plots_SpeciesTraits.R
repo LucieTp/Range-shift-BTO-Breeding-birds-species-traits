@@ -58,6 +58,7 @@ BTO_distrib = merge(Loc10, BTO_distrib, all.y = T)
 
 ### labelling the leading and rear edge coordinates for mapping
 BTO_distrib$Edge = NA
+stable.leading = stable.rear = poleward.leading = poleward.rear = southward.rear = southward.leading = NULL
 for (i in unique(species_traits$speccode)){
   for (p in unique(BTO_distrib$periodN)){
     
@@ -66,7 +67,65 @@ for (i in unique(species_traits$speccode)){
 
     BTO_distrib[which(BTO_distrib$speccode == i & BTO_distrib$periodN == p),'Edge'] = edge
   }
+  
+  ## leading edge
+  
+  test = wilcox.test(lat ~ periodN, data = BTO_distrib[which(BTO_distrib$speccode == i & BTO_distrib$Edge == 'Leading' & BTO_distrib$periodN %in% c('P.1','P.3') ),], alternative = 'less', paired = F)
+  if(test$p.value < 0.05 ){
+      poleward.leading = c(poleward.leading, i)
+    } else {
+        test = wilcox.test(lat ~ periodN, data = BTO_distrib[which(BTO_distrib$speccode == i & BTO_distrib$Edge == 'Leading' & BTO_distrib$periodN %in% c('P.1','P.3') ),], alternative = 'greater', paired = F)
+        if(test$p.value < 0.05 ){
+          southward.leading = c(southward.leading, i)
+        } 
+        else {
+          stable.leading = c(stable.leading, i)
+        }
+    }
+    
+    ## rear edge
+    test1 = wilcox.test(lat ~ periodN, data = BTO_distrib[which(BTO_distrib$speccode == i & BTO_distrib$Edge == 'Rear' & BTO_distrib$periodN %in% c('P.1','P.3') ),], alternative = 'less', paired = F)
+    
+    if(test1$p.value < 0.05 ){
+      poleward.rear = c(poleward.rear, i)
+    } else {
+      test1 = wilcox.test(lat ~ periodN, data = BTO_distrib[which(BTO_distrib$speccode == i & BTO_distrib$Edge == 'Rear' & BTO_distrib$periodN %in% c('P.1','P.3') ),], alternative = 'greater', paired = F)
+      if(test1$p.value < 0.05 ){
+        southward.rear = c(southward.rear, i)
+      } 
+      else {
+        stable.rear = c(stable.rear, i)
+      }
+    }
 }
+
+length(poleward.leading) + length(southward.leading) + length(stable.leading) == 159
+
+edge = poleward.leading
+print(paste(length(edge)/159, 'of species shifted their leading edge significantly NORTH by', mean(species_traits[which(species_traits$speccode %in% edge),'shift_max20_P.1.3_dist_km']), 'sd', 
+            sd(species_traits[which(species_traits$speccode %in% edge),'shift_max20_P.1.3_dist_km'])))
+edge = southward.leading
+print(paste(length(edge)/159, 'of species shifted their leading edge significantly SOUTH by', mean(species_traits[which(species_traits$speccode %in% edge),'shift_max20_P.1.3_dist_km']), 'sd', 
+            sd(species_traits[which(species_traits$speccode %in% edge),'shift_max20_P.1.3_dist_km'])))
+edge = stable.leading
+print(paste(length(edge)/159, 'of species shifted did not shift their leading edge significantly'))
+
+edge = poleward.rear
+print(paste(length(edge)/159, 'of species shifted their leading edge significantly NORTH by', mean(species_traits[which(species_traits$speccode %in% edge),'shift_min20_P.1.3_dist_km']), 'sd', 
+            sd(species_traits[which(species_traits$speccode %in% edge),'shift_min20_P.1.3_dist_km'])))
+edge = southward.rear
+print(paste(length(edge)/159, 'of species shifted their leading edge significantly SOUTH by', mean(species_traits[which(species_traits$speccode %in% edge),'shift_min20_P.1.3_dist_km']), 'sd', 
+            sd(species_traits[which(species_traits$speccode %in% edge),'shift_min20_P.1.3_dist_km'])))
+edge = stable.rear
+print(paste(length(edge)/159, 'of species shifted did not shift their rear edge significantly'))
+
+
+t.test(lat ~ periodN, data = BTO_distrib[which(BTO_distrib$speccode == i & BTO_distrib$Edge == 'Leading' & BTO_distrib$periodN %in% c('P.1','P.3') ),])
+
+bartlett.test(lat ~ periodN, data = BTO_distrib[which(BTO_distrib$speccode == i & BTO_distrib$Edge == 'Leading' & BTO_distrib$periodN %in% c('P.1','P.3') ),])
+shapiro.test(x$shift[which(x$edge == 'min')])
+
+
 
 
 ################################################################################
@@ -230,6 +289,9 @@ wilcox.test(shift_min20_P.1.3_dist_km ~ PassNonPass, data = species_traits, alte
 
 wilcox.test(shift_max20_P.1.3_dist_km ~ migratory_binomial, data = species_traits, alternative = "less")
 wilcox.test(shift_min20_P.1.3_dist_km ~ migratory_binomial, data = species_traits, alternative = "less")
+
+
+
 
 
 ################################################################################
