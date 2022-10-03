@@ -13,21 +13,21 @@ library(rnaturalearth)
 sf_UK  <- ne_countries(scale = "medium", country = 'United Kingdom', returnclass = "sf")
 
 ## Main table with all the species traits, range shift etc
-setwd("E:/TheseSwansea/TraitStudy/code_Miguel")
-species_traits <- read.csv('E:/TheseSwansea/TraitStudy/code_Miguel/SpecTrait_04022022_159sp.csv', stringsAsFactors = FALSE, row.names = 1)
+setwd("F:/TheseSwansea/TraitStudy/code_Miguel")
+species_traits <- read.csv('F:/TheseSwansea/TraitStudy/code_Miguel/SpecTrait_04022022_159sp.csv', stringsAsFactors = FALSE, row.names = 1)
 
 # Marine or non marine species : (Marine = >75% of points within 20km of the coastline)
-propmarine <- read.csv('E:/TheseSwansea/TraitStudy/code_Konstans/Speciestraits_ProportionMarineBTOsp_159sp.csv', stringsAsFactors = FALSE, row.names = 1)
+propmarine <- read.csv('F:/TheseSwansea/TraitStudy/code_Konstans/Speciestraits_ProportionMarineBTOsp_159sp.csv', stringsAsFactors = FALSE, row.names = 1)
 species_traits = merge(species_traits, propmarine[,c('speccode','prop_Marine20km')])
 species_traits$Marine = ifelse(species_traits$prop_Marine20km>75, 1, 0)
 
 ## adding range shift in km 
-df.rangeshift <- read.csv('E:/TheseSwansea/TraitStudy/code_Konstans/df_rangeshift_012022_km_160sp.csv', stringsAsFactors = FALSE, row.names = 1)
+df.rangeshift <- read.csv('F:/TheseSwansea/TraitStudy/code_Konstans/df_rangeshift_012022_km_160sp.csv', stringsAsFactors = FALSE, row.names = 1)
 species_traits = merge(species_traits, df.rangeshift[,c("speccode","shift_max20_P.1.3_dist_km", "shift_min20_P.1.3_dist_km","dist_N_km_max20_P.1","dist_S_km_min20_P.1")], all.x = T)
 
 ## BTO Data (occurrence data per grid cell for all of UK) - used for distribution maps
-BTO_grid <- read.csv("E:/TheseSwansea/TraitStudy/code_Konstans/grid_square_coordinates_lookup.csv", header=T)
-BTO_distrib <- read.csv("E:/TheseSwansea/TraitStudy/code_Konstans/distributions.csv", header=T) # period, sp code, season and grid for GB and Ireland
+BTO_grid <- read.csv("F:/TheseSwansea/TraitStudy/code_Konstans/grid_square_coordinates_lookup.csv", header=T)
+BTO_distrib <- read.csv("F:/TheseSwansea/TraitStudy/code_Konstans/distributions.csv", header=T) # period, sp code, season and grid for GB and Ireland
 
 library(dplyr)
 # Mean coordinates of each grid cell
@@ -147,10 +147,10 @@ species_traits = species_traits[which(species_traits$Marine == 0),]
 ### Table to export for supp material 
 
 
-names = c('scientific_name','english_name','P.1','lat_mean.P.1','distrib.core','IOCOrder','BodyMass.Value','shift_max20_P.1.3_dist_km','shift_min20_P.1.3_dist_km','shift_diff','outdegree','prop_Marine20km',"pc1_env","pc2_env","pc1_lc" ,"pc2_lc", "normalised_indegree","diet_diversity","trophic_position","habitat_gen")
+names = c('scientific_name','english_name',"Marine",'prop_Marine20km',"dist_S_km_min20_P.1","dist_N_km_max20_P.1",'P.1','lat_mean.P.1','distrib.core','IOCOrder','BodyMass.Value','shift_max20_P.1.3_dist_km','shift_min20_P.1.3_dist_km','shift_diff','outdegree',"pc1_env","pc2_env","pc1_lc" ,"pc2_lc", "normalised_indegree","diet_diversity","trophic_position","habitat_gen")
 towrite = species_traits[,names]
-names(towrite) = c('Scientific name','English name','Number of grid cells in P1','Mean latitude of grid cells in P1','Distribution core','Taxonomy','Body Mass (g)','Shift in leading edge between P1 and P2 (km)','Shift in rear edge between P1 and P2 (km)','Range expansion (km)','Outdegree','Proportion of coastal grid cells',"Association with precipitation seasonality","Association with temperature seasonality","Association with forest and grassland" ,"Association with urban and cropland", "Normalised indegree","Diet diversity","Trophic position","Habitat generality")
-write.csv(towrite, 'SpeciesTraitsTable_paper.csv')
+names(towrite) = c('Scientific name','English name',"Marine species", 'Proportion of coastal grid cells',"Southern boundary effect","Northern boundary effect",'Number of grid cells in P1','Mean latitude of grid cells in P1','Distribution core','Taxonomy','Body Mass (g)','Shift in leading edge between P1 and P2 (km)','Shift in rear edge between P1 and P2 (km)','Range expansion (km)','Vulnerability',"Association with precipitation seasonality","Association with temperature seasonality","Association with forest and grassland" ,"Association with urban and cropland", "Normalised indegree","Diet diversity","Trophic position","Habitat generality")
+write.csv(towrite, 'SpeciesTraitsTable_paper1.csv')
 
 ################################################################################
 ### Table of results
@@ -159,14 +159,15 @@ library(stargazer)
 library(stringr)
 library(tidyr)
 
-tb = read.csv2("E:/TheseSwansea/TraitStudy/code_Miguel/pglmm_scaled_terrestrialNS_PCs.csv", sep =",", dec = ".")
+tb = read.csv2("F:/TheseSwansea/TraitStudy/code_Miguel/pglmm_scaled_terrestrialNS_PCs_Std.Error.csv", sep =",", dec = ".")
 
-# tb[,7:21] = apply(tb[,7:21], 2, as.numeric)
 tb[,c("p.value.phylo", "r2", str_subset(names(tb), 'estimate'))] = round(tb[,c("p.value.phylo", "r2", str_subset(names(tb), 'estimate'))],2)
 
 #################################################################################
 ## TABLE 1 ######################################################################
 #################################################################################
+
+tb = read.csv2("F:/TheseSwansea/TraitStudy/code_Miguel/pglmm_scaled_terrestrialNS_PCs_Std.Error.csv", sep =",", dec = ".")
 
 tb1 = pivot_wider(tb[which(tb$value %in% c("significance","estimate_mean")),-1], values_from = names(tb)[7:21], names_from = value)
 tb1 = tb1[-which(str_detect(tb1$model, "Non passeriformes")),]
@@ -181,11 +182,6 @@ test[,6:35] = apply(test[,6:35], 2, as.character)
 test[is.na(test)] = ''
 for(i in seq(6,35,2)) {test[,i] = apply(test[,c(i, i+1)], 1, function(x) paste(x[1], x[2]))}
 test = test[,-str_which(names(test), 'significance')]
-names(test) = c("model" , "Nb of species","Shift", "p-value phylo signal", "r2", "Intercept ",'Migratory status', 'Diet diversity',"Distance from N tip",
-                "Distance from S tip ", "Habitat generality ","log10 Body Mass ", 'Normalised indegree ', "Vulnerability ",
-                "Regional coverage " , "Precipitation seasonality ", "Grassland and forest " , "Temperature seasonality ", 'Urban and cropland ',
-                "Trophic position " )
-
 
 stargazer(test, summary = F, type = "html")
 
@@ -193,67 +189,118 @@ stargazer(test, summary = F, type = "html")
 #################################################################################
 ## FIG 1 and Fig S2 #############################################################
 #################################################################################
+safe_colorblind_palette <- c("#88CCEE", "#CC6677", "#DDCC77", "#117733", "#332288", "#AA4499", 
+                             "#44AA99", "#999933", "#882255", "#661100", "#6699CC", "#888888")
+scales::show_col(safe_colorblind_palette)
 
 loc = merge(Loc10, BTO_distrib[which(BTO_distrib$speccode == 95 & BTO_distrib$periodN == "P.1"),])
 loc$Edge = ifelse(loc$lat %in% tail(sort(loc$lat), 20), "Leading", ifelse(loc$lat %in% head(sort(loc$lat), 20), "Rear", "Middle"))
 
-Northern.dist = ggplot(data = sf_UK) + geom_sf() + geom_point(data = loc, aes(x = long, y = lat), size = 1) + 
-  stat_ellipse(data = loc[which(loc$Edge %in% c("Leading","Rear")),], aes(x = long, y = lat, colour = Edge)) + 
+Northern.dist = ggplot(data = sf_UK) + geom_sf() + geom_point(data = loc, aes(x = long, y = lat), size = 1, shape = 15) + 
+  stat_ellipse(data = loc[which(loc$Edge %in% c("Leading","Rear")),], aes(x = long, y = lat, colour = Edge), size = 1.2) + 
   geom_hline(yintercept = max(BTO_distrib$lat), linetype="dashed") + geom_hline(yintercept = min(BTO_distrib$lat), linetype="dashed") + 
-  ggtitle("Northern species") + ylab("") + xlab("") + theme_classic(base_size =  11)
-
+  ggtitle("Northern species") + ylab("") + xlab("") + theme_classic(base_size =  18) 
 
 loc = merge(Loc10, BTO_distrib[which(BTO_distrib$speccode == 272 & BTO_distrib$periodN == "P.1"),])
 loc$Edge = ifelse(loc$lat %in% tail(sort(loc$lat), 20), "Leading", ifelse(loc$lat %in% head(sort(loc$lat), 20), "Rear", "Middle"))
 
-Southern.dist = ggplot(data = sf_UK) + geom_sf() + geom_point(data = loc, aes(x = long, y = lat), size = 1) + 
-  stat_ellipse(data = loc[which(loc$Edge %in% c("Leading","Rear")),], aes(x = long, y = lat, colour = Edge)) + 
+Southern.dist = ggplot(data = sf_UK) + geom_sf() + geom_point(data = loc, aes(x = long, y = lat), size = 1, shape = 15) + 
+  stat_ellipse(data = loc[which(loc$Edge %in% c("Leading","Rear")),], aes(x = long, y = lat, colour = Edge), size = 1.2) + 
   geom_hline(yintercept = max(BTO_distrib$lat), linetype="dashed") + geom_hline(yintercept = min(BTO_distrib$lat), linetype="dashed") + 
-  ggtitle("Southern species") + ylab("") + xlab("") + theme_classic(base_size =  11)
+  ggtitle("Southern species") + ylab("") + xlab("") + theme_classic(base_size =  20)
 
 ### model results
 
-tb2 = pivot_longer(tb[which(!tb$value %in% c("estimate_sd")),], cols = 7:21, names_to = "covariate", values_to = "estimate")
+library(tidyverse)
+tb[,7:21] = apply(tb[,7:21], 2, as.numeric)
+
+tb2 = pivot_longer(tb, cols = 7:21, names_to = "covariate", values_to = "estimate")
 tb2 = pivot_wider(tb2[,2:12], values_from = estimate, names_from = value)
 tb2 = tb2[-which(str_detect(tb2$model, "Non passeriformes")),]
-tb2$shift = ifelse(tb2$shift == "max", "leading edge shift",ifelse(tb2$shift == "min","rear edge shift", "Expansion/Retraction"))
+tb2$shift = ifelse(tb2$shift == "max", "leading edge shift",ifelse(tb2$shift == "min","rear edge shift", "Expansion"))
 
 tb2$significance = ifelse(tb2$p.value_mean<0.001,"***",ifelse(tb2$p.value_mean<0.01,"**",ifelse(tb2$p.value_mean<0.05,"*",ifelse(tb2$p.value_mean<0.1,".",""))))
 tb2$size = ifelse(tb2$p.value_mean<0.05,0.6,0.5)
 tb2$covariate = factor(tb2$covariate)
-levels(tb2$covariate) = c("Migrant status - Migrant","Diet diversity - Elton", "Northern boundary effect", "Southern boundary effect","Habitat generality","Body mass", "Diet diversity - TETRA EU", "Vulnerability", "Regional coverage", "Precipitation seasonality", "Association with forest/grasslands","Temperature seasonality","Association with urban areas/croplands","Trophic position","Intercept")
+levels(tb2$covariate) = c("Migrant status - Migrant","Normalised indegree", "Northern boundary effect", "Southern boundary effect","Habitat generality","Body mass", "Diet diversity - Elton", "Vulnerability", "Regional coverage", "Precipitation seasonality", "Association with forest/grasslands","Temperature seasonality","Association with urban areas/croplands","Trophic position","Intercept")
+
+tb2$CI_lo = tb2$estimate_mean - 1.96*tb2$estimate_se
+tb2$CI_up = tb2$estimate_mean + 1.96*tb2$estimate_se
+
+tb2$SE_lo = tb2$estimate_mean - tb2$estimate_se
+tb2$SE_up = tb2$estimate_mean + tb2$estimate_se
+
+tb2$shift = as.factor(tb2$shift)
+tb2$shift = relevel(tb2$shift, "rear edge shift")
+levels(tb2$shift)
 
 biogeo = tb2[which(tb2$covariate %in% c("Northern boundary effect", "Southern boundary effect", "Regional coverage", "Intercept")),]
-traits = tb2[which(!tb2$covariate %in% c("Northern boundary effect", "Southern boundary effect", "Regional coverage",'Diet diversity - TETRA EU')),]
+traits = tb2[which(!tb2$covariate %in% c("Northern boundary effect", "Southern boundary effect", "Regional coverage",'Intercept')),]
+traits_nodiff = traits[which(traits$shift!='Expansion'),]
 
 ### BIOGEOGRAPHICAL COVARIATES
-g1 = ggplot(data = biogeo[which(biogeo$model == "northern"),], aes(x = estimate_mean, y = covariate, colour = shift, shape = model, label = significance, alpha = 1/p.value_mean)) + geom_point() + geom_vline(xintercept = 0) + geom_text(hjust=0, vjust=0,show.legend=FALSE) + scale_alpha(range = c(0.5, 2), guide=FALSE) + xlab("Estimate") + ylab("") + xlim(min(biogeo$estimate_mean), max(biogeo$estimate_mean))
-g2 = ggplot(data = biogeo[which(biogeo$model == "southern"),], aes(x = estimate_mean, y = covariate, colour = shift, shape = model, label = significance, alpha = 1/p.value_mean)) + geom_point() + geom_vline(xintercept = 0) + geom_text(hjust=0, vjust=0,show.legend=FALSE) + scale_alpha(range = c(0.5, 2), guide=FALSE)+ xlab("Estimate") + ylab("") + xlim(min(biogeo$estimate_mean), max(biogeo$estimate_mean))
-g3 = ggplot(data = biogeo[which(biogeo$model == "Passeriformes"),], aes(x = estimate_mean, y = covariate, colour = shift, shape = model, label = significance, alpha = 1/p.value_mean)) + geom_point() + geom_vline(xintercept = 0) + geom_text(hjust=0, vjust=0,show.legend=FALSE) + scale_alpha(range = c(0.5, 2), guide=FALSE)+ xlab("Estimate") + ylab("") + xlim(min(biogeo$estimate_mean), max(biogeo$estimate_mean))
-g4 = ggplot(data = biogeo[which(biogeo$model == "terrestrial"),], aes(x = estimate_mean, y = covariate, colour = shift, shape = model, label = significance, alpha = 1/p.value_mean)) + geom_point() + geom_vline(xintercept = 0) + geom_text(hjust=0, vjust=0,show.legend=FALSE) + scale_alpha(range = c(0.5, 2), guide=FALSE)+ xlab("Estimate") + ylab("") + xlim(min(biogeo$estimate_mean), max(biogeo$estimate_mean))
+
+g1 = ggplot(data = biogeo[which(biogeo$model == "northern"),], aes(x = estimate_mean, y = paste(covariate,shift), colour = shift, shape = model, label = significance)) + geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0.5, vjust=0.2,show.legend=FALSE, size = 10) + xlab("Estimate") + ylab("") + geom_errorbarh(aes(y = paste(covariate,shift), xmin = CI_lo, xmax = CI_up), size = 1.5, height = .3) + xlim(min(biogeo[which(biogeo$model == "northern"),'CI_lo']),max(biogeo[which(biogeo$model == "northern"),'CI_up'])) + scale_y_discrete(labels = c('','Intercept','','','Northern boundary effect','','','Range size','','','Southern boundary effect',''))+ ggtitle('Northern species')+ scale_colour_manual(values= safe_colorblind_palette) + theme_bw(base_size = 25) + theme(axis.ticks = element_blank())  + geom_hline(yintercept = seq(3.5,9.5,3), colour = 'grey', linetype = 'longdash')
+g2 = ggplot(data = biogeo[which(biogeo$model == "southern"),], aes(x = estimate_mean, y = paste(covariate,shift), colour = shift, shape = model, label = significance)) + geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0.5, vjust=0.2,show.legend=FALSE, size = 10) + xlab("Estimate") + ylab("") + geom_errorbarh(aes(y = paste(covariate,shift), xmin = CI_lo, xmax = CI_up), size = 1.5, height = .3) + xlim(min(biogeo[which(biogeo$model == "southern"),'CI_lo']),max(biogeo[which(biogeo$model == "southern"),'CI_up'])) + scale_y_discrete(labels = c('','Intercept','','','Northern boundary effect','','','Range size','','','Southern boundary effect',''))+ ggtitle('Southern species')+ scale_colour_manual(values= safe_colorblind_palette) + theme_bw(base_size = 25) + theme(axis.ticks = element_blank())  + geom_hline(yintercept = seq(3.5,9.5,3), colour = 'grey', linetype = 'longdash')
+g3 = ggplot(data = biogeo[which(biogeo$model == "Passeriformes"),], aes(x = estimate_mean, y = paste(covariate,shift), colour = shift, shape = model, label = significance)) + geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0.5, vjust=0.2,show.legend=FALSE, size = 10) + xlab("Estimate") + ylab("") + geom_errorbarh(aes(y = paste(covariate,shift), xmin = CI_lo, xmax = CI_up), size = 1.5, height = .3) + xlim(min(biogeo[which(biogeo$model == "Passeriformes"),'CI_lo']),max(biogeo[which(biogeo$model == "Passeriformes"),'CI_up'])) + scale_y_discrete(labels = c('','Intercept','','','Northern boundary effect','','','Range size','','','Southern boundary effect',''))+ ggtitle('Passeriformes')+ scale_colour_manual(values= safe_colorblind_palette) + theme_bw(base_size = 25) + theme(axis.ticks = element_blank())  + geom_hline(yintercept = seq(3.5,9.5,3), colour = 'grey', linetype = 'longdash')
+g4 = ggplot(data = biogeo[which(biogeo$model == "terrestrial"),], aes(x = estimate_mean, y = paste(covariate,shift), colour = shift, shape = model, label = significance)) + geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0.5, vjust=0.2,show.legend=FALSE, size = 10) + xlab("Estimate") + ylab("") + geom_errorbarh(aes(y = paste(covariate,shift), xmin = CI_lo, xmax = CI_up), size = 1.5, height = .3) + xlim(min(biogeo[which(biogeo$model == "terrestrial"),'CI_lo']),max(biogeo[which(biogeo$model == "terrestrial"),'CI_up'])) + scale_y_discrete(labels = c('','Intercept','','','Northern boundary effect','','','Range size','','','Southern boundary effect',''))+ ggtitle('All species')+ scale_colour_manual(values= safe_colorblind_palette) + theme_bw(base_size = 25) + theme(axis.ticks = element_blank())  + geom_hline(yintercept = seq(3.5,9.5,3), colour = 'grey', linetype = 'longdash')
+
+# g1 = ggplot(data = biogeo[which(biogeo$model == "northern"),], aes(x = estimate_mean, y = covariate, colour = shift, shape = model, label = significance, alpha = 1/p.value_mean)) + geom_point() + geom_vline(xintercept = 0) + geom_text(hjust=0, vjust=0,show.legend=FALSE) + scale_alpha(range = c(0.5, 2), guide=FALSE) + xlab("Estimate") + ylab("") + xlim(min(biogeo$estimate_mean), max(biogeo$estimate_mean))
+# g2 = ggplot(data = biogeo[which(biogeo$model == "southern"),], aes(x = estimate_mean, y = covariate, colour = shift, shape = model, label = significance, alpha = 1/p.value_mean)) + geom_point() + geom_vline(xintercept = 0) + geom_text(hjust=0, vjust=0,show.legend=FALSE) + scale_alpha(range = c(0.5, 2), guide=FALSE)+ xlab("Estimate") + ylab("") + xlim(min(biogeo$estimate_mean), max(biogeo$estimate_mean))
+# g3 = ggplot(data = biogeo[which(biogeo$model == "Passeriformes"),], aes(x = estimate_mean, y = covariate, colour = shift, shape = model, label = significance, alpha = 1/p.value_mean)) + geom_point() + geom_vline(xintercept = 0) + geom_text(hjust=0, vjust=0,show.legend=FALSE) + scale_alpha(range = c(0.5, 2), guide=FALSE)+ xlab("Estimate") + ylab("") + xlim(min(biogeo$estimate_mean), max(biogeo$estimate_mean))
+# g4 = ggplot(data = biogeo[which(biogeo$model == "terrestrial"),], aes(x = estimate_mean, y = covariate, colour = shift, shape = model, label = significance, alpha = 1/p.value_mean)) + geom_point() + geom_vline(xintercept = 0) + geom_text(hjust=0, vjust=0,show.legend=FALSE) + scale_alpha(range = c(0.5, 2), guide=FALSE)+ xlab("Estimate") + ylab("") + xlim(min(biogeo$estimate_mean), max(biogeo$estimate_mean))
 
 library(ggpubr)
 ## Figure S2 - Estimates from GLMM 
 ggarrange(g1,g2,g3,g4)
 
 library(cowplot)
-setwd("E:/TheseSwansea/TraitStudy/code_Miguel")
+setwd("F:/TheseSwansea/TraitStudy/code_Miguel")
 ggsave2('ModelEstimates_Biogeo.jpeg', scale = 3.5)
 
 ### SPECIES TRAITS
-g1 = ggplot(data = traits[which(traits$model == "northern"),], aes(x = estimate_mean, y = covariate, colour = shift, label = significance, alpha = 1/p.value_mean)) + geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0, vjust=0,show.legend=FALSE) + scale_alpha(range = c(0.5, 2), guide=FALSE) + xlab("Estimate") + ylab("") + xlim(min(traits$estimate_mean), max(traits$estimate_mean)) + ggtitle('Northern species') + theme_classic(base_size =  15) + theme(legend.position = 'bottom')
-g2 = ggplot(data = traits[which(traits$model == "southern"),], aes(x = estimate_mean, y = covariate, colour = shift, label = significance, alpha = 1/p.value_mean)) + geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0, vjust=0,show.legend=FALSE) + scale_alpha(range = c(0.5, 2), guide=FALSE)+ xlab("Estimate") + ylab("") + xlim(min(traits$estimate_mean), max(traits$estimate_mean)) + ggtitle('Southern species')+ theme_classic(base_size =  15) + theme(legend.position = 'bottom')
-g3 = ggplot(data = traits[which(traits$model == "Passeriformes"),], aes(x = estimate_mean, y = covariate, colour = shift, label = significance, alpha = 1/p.value_mean)) + geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0, vjust=0,show.legend=FALSE) + scale_alpha(range = c(0.5, 2), guide=FALSE)+ xlab("Estimate") + ylab("") + xlim(min(traits$estimate_mean), max(traits$estimate_mean)) + ggtitle('Passeriformes')+ theme_classic(base_size =  15) + theme(legend.position = 'bottom')
-g4 = ggplot(data = traits[which(traits$model == "terrestrial"),], aes(x = estimate_mean, y = covariate, colour = shift, label = significance, alpha = 1/p.value_mean)) + geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0, vjust=0,show.legend=FALSE) + scale_alpha(range = c(0.5, 2), guide=FALSE)+ xlab("Estimate") + ylab("") + xlim(min(traits$estimate_mean), max(traits$estimate_mean)) + ggtitle('All species')+ theme_classic(base_size =  15) + theme(legend.position = 'bottom')
+labels = c('','Association with forest/grassland','','','Association with urban area/cropland','','','Body mass','','','Normalised indegree','','','Habitat generality','','','Migratory status - Migrant','','','Normalised indegree','','','Association with precipitation seasonality','','','Association with temperature seasonality','','','Trophic position','','','Vulnerability','')
 
-ggarrange(g1,Northern.dist,g3, g2,Southern.dist,g4, common.legend = T, labels = c('A','','C','B','','D'))
+g1 = ggplot(data = traits[which(traits$model == "northern"),], aes(x = estimate_mean, y = paste(covariate,shift), colour = shift, label = significance)) + geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0.5, vjust=0.2,show.legend=FALSE, size = 10) + xlab("Estimate") + ylab("") + ggtitle('Northern species') + geom_errorbarh(aes(y = paste(covariate,shift), xmin = CI_lo, xmax = CI_up), size = 1, height = .1, alpha = .8) + xlim(min(traits[,'CI_lo']),max(traits[,'CI_up'])) + scale_y_discrete(labels = labels)+ ggtitle('Northern species')+ scale_colour_manual(values= safe_colorblind_palette) + theme_bw(base_size = 15) + theme(axis.ticks = element_blank())  + geom_hline(yintercept = seq(3.5,30.5,3), colour = 'grey', linetype = 'longdash')
+g2 = ggplot(data = traits[which(traits$model == "southern"),], aes(x = estimate_mean, y = paste(covariate,shift), colour = shift, label = significance)) + geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0.5, vjust=0.2,show.legend=FALSE, size = 10) + xlab("Estimate") + ylab("") + ggtitle('Southern species')+ geom_errorbarh(aes(y = paste(covariate,shift), xmin = CI_lo, xmax = CI_up),size = 1, height = .1, alpha = .8) + xlim(min(traits[,'CI_lo']),max(traits[,'CI_up'])) + scale_y_discrete(labels = labels)+ ggtitle('Southern species')+ scale_colour_manual(values= safe_colorblind_palette) + theme_bw(base_size = 15) + theme(axis.ticks = element_blank())  + geom_hline(yintercept =seq(3.5,30.5,3), colour = 'grey', linetype = 'longdash')
+g3 = ggplot(data = traits[which(traits$model == "Passeriformes"),], aes(x = estimate_mean, y = paste(covariate,shift), colour = shift, label = significance)) + geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0.5, vjust=0.2,show.legend=FALSE, size = 10) + xlab("Estimate") + ylab("") + ggtitle('Passeriformes') + geom_errorbarh(aes(y = paste(covariate,shift), xmin = CI_lo, xmax = CI_up), size = 1, height = .1, alpha = .8) + xlim(min(traits[,'CI_lo']),max(traits[,'CI_up'])) + scale_y_discrete(labels =labels)+ ggtitle('Passeriformes')+ scale_colour_manual(values= safe_colorblind_palette) + theme_bw(base_size = 15) + theme(axis.ticks = element_blank())  + geom_hline(yintercept = seq(3.5,30.5,3), colour = 'grey', linetype = 'longdash')
+g4 = ggplot(data = traits[which(traits$model == "terrestrial"),], aes(x = estimate_mean, y = paste(covariate,shift), colour = shift, label = significance)) + geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0.5, vjust=0.2,show.legend=FALSE, size = 10) + xlab("Estimate") + ylab("") + ggtitle('All species') + geom_errorbarh(aes(y = paste(covariate,shift), xmin = CI_lo, xmax = CI_up), size = 1, height = .1, alpha = .8) + xlim(min(traits[,'CI_lo']),max(traits[,'CI_up'])) + scale_y_discrete(labels =labels)+ ggtitle('All species')+ scale_colour_manual(values= safe_colorblind_palette) + theme_bw(base_size = 15) + theme(axis.ticks = element_blank())  + geom_hline(yintercept = seq(3.5,30.5,3), colour = 'grey', linetype = 'longdash')
 
-setwd("E:/TheseSwansea/TraitStudy/code_Miguel")
+# g1 = ggplot(data = traits[which(traits$model == "northern"),], aes(x = estimate_mean, y = covariate, colour = shift, label = significance, alpha = 1/p.value_mean)) + geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0, vjust=0,show.legend=FALSE) + xlab("Estimate") + ylab("") + xlim(min(traits$estimate_mean), max(traits$estimate_mean)) + ggtitle('Northern species') + theme_classic(base_size =  20) + theme(legend.position = 'bottom')
+# g2 = ggplot(data = traits[which(traits$model == "southern"),], aes(x = estimate_mean, y = covariate, colour = shift, label = significance, alpha = 1/p.value_mean)) + geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0, vjust=0,show.legend=FALSE) + xlab("Estimate") + ylab("") + xlim(min(traits$estimate_mean), max(traits$estimate_mean)) + ggtitle('Southern species')+ theme_classic(base_size =  20) + theme(legend.position = 'bottom')
+# g3 = ggplot(data = traits[which(traits$model == "Passeriformes"),], aes(x = estimate_mean, y = covariate, colour = shift, label = significance, alpha = 1/p.value_mean)) + geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0, vjust=0,show.legend=FALSE) + xlab("Estimate") + ylab("") + xlim(min(traits$estimate_mean), max(traits$estimate_mean)) + ggtitle('Passeriformes')+ theme_classic(base_size =  20) + theme(legend.position = 'bottom')
+# g4 = ggplot(data = traits[which(traits$model == "terrestrial"),], aes(x = estimate_mean, y = covariate, colour = shift, label = significance, alpha = 1/p.value_mean)) + geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0, vjust=0,show.legend=FALSE) + xlab("Estimate") + ylab("") + xlim(min(traits$estimate_mean), max(traits$estimate_mean)) + ggtitle('All species')+ theme_classic(base_size =  20) + theme(legend.position = 'bottom')
+
+ggarrange(g1,Northern.dist,g3, g2,Southern.dist,g4, common.legend = T, labels = c('a','','c','b','','d'), font.label = list(size = 18))
+
+setwd("F:/TheseSwansea/TraitStudy/code_Miguel")
 ## Figure 1 - Estimates from GLMM 
 ggsave2('ModelEstimates_Traits_maps.jpeg', scale = 2.2, dpi = 800)
 
 
+### SPECIES TRAITS - no expansion
+labels = c('','','Forest/grassland','','Urban area/cropland','','Body mass','','Diet diversity','','Habitat generality','','Migratory status - Migrant','','Normalised indegree','','Precipitation seasonality','','Temperature seasonality','','Trophic position','','Vulnerability','')
 
+
+library(ggrepel)
+traits_nodiff$shift = relevel(traits_nodiff$shift, "rear edge shift")
+g1 = ggplot(data = traits_nodiff[which(traits_nodiff$model == "northern"),], aes(x = estimate_mean, y = paste(covariate,shift), colour = shift, label = significance)) + geom_hline(yintercept = seq(2.5,20.5,2), colour = 'grey', linetype = 'longdash') + geom_vline(xintercept = 0) + geom_point(size = 2) + geom_text(hjust=0.5, vjust=0.35,show.legend=FALSE, size = 10) + xlab("Estimate") + ylab("") + ggtitle('Northern species') + geom_errorbarh(aes(y = paste(covariate,shift), xmin = CI_lo, xmax = CI_up), size = 1, height = .1) + xlim(min(traits_nodiff[,'CI_lo']),max(traits_nodiff[,'CI_up'])) + scale_y_discrete(labels = rev(labels), expand = c(0, 1), limits=rev) + ggtitle('Northern species') + scale_colour_manual(values= safe_colorblind_palette) + theme_bw(base_size = 18) + theme(axis.ticks = element_blank())
+g2 = ggplot(data = traits_nodiff[which(traits_nodiff$model == "southern"),], aes(x = estimate_mean, y = paste(covariate,shift), colour = shift, label = significance)) + geom_hline(yintercept = seq(2.5,20.5,2), colour = 'grey', linetype = 'longdash') + geom_vline(xintercept = 0) + geom_point(size = 2) + geom_text(hjust=0.5, vjust=0.35,show.legend=FALSE, size = 10) + xlab("Estimate") + ylab("") + ggtitle('Southern species')+ geom_errorbarh(aes(y = paste(covariate,shift), xmin = CI_lo, xmax = CI_up),  size = 1, height = .1) + xlim(min(traits_nodiff[,'CI_lo']),max(traits_nodiff[,'CI_up'])) + scale_y_discrete(labels = rev(labels), expand = c(0, 1), limits=rev)+ ggtitle('Southern species')+ scale_colour_manual(values= safe_colorblind_palette) + theme_bw(base_size = 18) + theme(axis.ticks = element_blank())
+g3 = ggplot(data = traits_nodiff[which(traits_nodiff$model == "Passeriformes"),], aes(x = estimate_mean, y = paste(covariate,shift), colour = shift, label = significance))+ geom_hline(yintercept = seq(2.5,20.5,2), colour = 'grey', linetype = 'longdash') + geom_vline(xintercept = 0) + geom_point(size = 2) + geom_text(hjust=0.5, vjust=0.35,show.legend=FALSE, size = 10) + xlab("Estimate") + ylab("") + ggtitle('Passeriformes') + geom_errorbarh(aes(y = paste(covariate,shift), xmin = CI_lo, xmax = CI_up), size = 1, height = .1) + xlim(min(traits_nodiff[,'CI_lo']),max(traits_nodiff[,'CI_up'])) + scale_y_discrete(labels = rev(labels), expand = c(0, 1), limits=rev)+ ggtitle('Passeriformes')+ scale_colour_manual(values= safe_colorblind_palette) + theme_bw(base_size = 18) + theme(axis.ticks = element_blank())
+g4 = ggplot(data = traits_nodiff[which(traits_nodiff$model == "terrestrial"),], aes(x = estimate_mean, y = paste(covariate,shift), colour = shift, label = significance)) + geom_hline(yintercept = seq(2.5,20.5,2), colour = 'grey', linetype = 'longdash') + geom_vline(xintercept = 0) + geom_point(size = 2) + geom_text(hjust=0.5, vjust=0.35,show.legend=FALSE, size = 10) + xlab("Estimate") + ylab("") + ggtitle('All species') + geom_errorbarh(aes(y = paste(covariate,shift), xmin = CI_lo, xmax = CI_up), size = 1, height = .1) + xlim(min(traits_nodiff[,'CI_lo']),max(traits_nodiff[,'CI_up'])) + scale_y_discrete(labels = rev(labels), expand = c(0, 1), limits=rev)+ ggtitle('All species')+ scale_colour_manual(values= safe_colorblind_palette) + theme_bw(base_size = 18) + theme(axis.ticks = element_blank())
+
+ggarrange(g1,Northern.dist,g3, g2,Southern.dist,g4, common.legend = T, labels = c('a','','c','b','','d'), widths = c(1.5,1,1.5), font.label = list(size = 20))
+
+
+setwd("F:/TheseSwansea/TraitStudy/code_Miguel")
+## Figure 1 - Estimates from GLMM 
+ggsave('ModelEstimates_Traits_maps.nodiff.CI.jpeg', scale = 2.2, dpi = 1200, bg = "white")
+ggsave('ModelEstimates_Traits_maps.nodiff.CI.pdf', , scale = 2.2, dpi = 1200, bg = "white", device = "pdf")
+
+
+g1bis = ggplot(data = traits_nodiff[which(traits_nodiff$model == "northern"),], aes(x = estimate_mean, y = paste(covariate,shift), colour = shift, label = significance)) + geom_hline(yintercept = seq(2.5,20.5,2), colour = 'grey', linetype = 'longdash') + geom_vline(xintercept = 0) + geom_point(size = 2) + geom_text(hjust=0.5, vjust=0.35,show.legend=FALSE, size = 10) + xlab("Estimate") + ylab("") + ggtitle('Northern species') + geom_errorbarh(aes(y = paste(covariate,shift), xmin = CI_lo, xmax = CI_up), size = 1, height = .1) + xlim(min(traits_nodiff[,'CI_lo']),max(traits_nodiff[,'CI_up'])) + scale_y_discrete(expand = c(0, 1), limits=rev) 
+
+ggarrange(g1bis, g1)
 
 ################################################################################
 # non parametric t.test : Wilcoxon rank sum test with continuity correction
