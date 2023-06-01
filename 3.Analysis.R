@@ -7,16 +7,16 @@
 rm(list = ls())
 
 
-setwd("E:/TheseSwansea/TraitStudy/code_Miguel")
-species_traits <- read.csv('SpecTrait_04022022_159sp.csv', stringsAsFactors = FALSE, row.names = 1)
+setwd("E:/TheseSwansea/TraitStudy/Github/Range-shift-BTO-breeding-birds/data")
+species_traits <- read.csv('SpecTrait_012023_159sp.csv', stringsAsFactors = FALSE, row.names = 1)
 
 # Marine or non marine species : (Marine = >75% of points within 20km of the coastline)
-propmarine <- read.csv('E:/TheseSwansea/TraitStudy/code_Konstans/Speciestraits_ProportionMarineBTOsp_159sp.csv', stringsAsFactors = FALSE, row.names = 1)
+propmarine <- read.csv('Speciestraits_ProportionMarineBTOsp_159sp.csv', stringsAsFactors = FALSE, row.names = 1)
 
 species_traits = merge(species_traits, propmarine[,c('speccode','prop_Marine20km')])
 species_traits$Marine = ifelse(species_traits$prop_Marine20km>75, 1, 0)
 
-df.rangeshift <- read.csv('E:/TheseSwansea/TraitStudy/code_Konstans/df_rangeshift_012022_km_160sp.csv', stringsAsFactors = FALSE, row.names = 1)
+df.rangeshift <- read.csv('df_rangeshift_012023.csv', stringsAsFactors = FALSE, row.names = 1)
 species_traits = merge(species_traits, df.rangeshift[,c("speccode","shift_max20_P.1.3_dist_km", "shift_min20_P.1.3_dist_km","dist_N_km_max20_P.1","dist_S_km_min20_P.1")], all.x = T)
 
 species_traits$log10BodyMass.Value = log10(species_traits$BodyMass.Value)
@@ -31,17 +31,13 @@ levels(species_traits$migratory_binomial) = c('Resident','Migrant')
 ## Keep only non coastal species
 species_traits = species_traits[which(species_traits$Marine == 0),]
 
-library(doBy)
-summaryBy(data = species_traits, shift_diff~distrib.core)
-
-
 ###############################################################################
 
 library(phyr)
 require(phytools)
 require(ape)
 
-tree = ape::read.tree("./BigBirdPhylogeny/BigBird.All.NewNames.6714Taxa.tre/BigBird.All.NewNames.6714Taxa.tre")
+tree = ape::read.tree("BigBird.All.NewNames.6714Taxa.tre/BigBird.All.NewNames.6714Taxa.tre")
 # tree <- consensus.edges(tree[1:10])
 tree <- tree[[1]]
 
@@ -52,11 +48,17 @@ parseRowNames <- function(x){
 }
 
 tree$tip.label <- unlist(lapply(tree$tip.label, parseRowNames))
-#species_traits$species[!species_traits$species%in%tree$tip.label] = "Acanthis_flammea"
+
+# get matching species names with phylo tree
+species_traits$species = species_traits$scientific_name_
+sptree_match = read.csv("BigBird.All.NewNames.6714Taxa.tre/PhyloTree_speciesMatch.csv", sep = ";")
+names(sptree_match)[1] = "species"
+species_traits$species[match(sptree_match$scientific_name_,species_traits$scientific_name_)] = sptree_match$species
+
 pruned_tree <- drop.tip(tree, setdiff(tree$tip.label, species_traits$species))
 
 ################################################################################
-### LM checking residuals
+### LM checking assumptions
 
 mod = pglmm(sqrt(shift_min20_P.1.3_dist_km) ~ scale(log10(BodyMass.Value)) + scale(habitat_gen) + scale(normalised_indegree) + scale(diet_diversity) + scale(dist_N_km_max20_P.1) + scale(dist_S_km_min20_P.1)  +  migratory_binomial  + scale(trophic_position) + scale(outdegree) + scale(pc1_env) + scale(pc2_env) + scale(pc1_lc) + scale(pc2_lc) + scale(P.1) +
               (1|species__), data = species_traits, family = "gaussian", cov_ranef = list(species = pruned_tree), REML = F)
@@ -113,12 +115,12 @@ summary(mod)
 
 
 ### FUNCTION FOR RUNNING ALL MODELS IN ONE LOOP
-mod_loop = function(dta_list, mod, loop = 1, migrant = FALSE){
+pglmm_shift = function(dta_list, mod){
   
   library(car)
   model = 0
   all_dta = data.frame() # dataframe to store the data
-
+  
   for (dta in dta_list){ # list of subsets to run the models for
     
     model = model + 1
@@ -126,97 +128,350 @@ mod_loop = function(dta_list, mod, loop = 1, migrant = FALSE){
     print(model)
     
     # variables to save
-    estimate.max = NULL; p.value.max = NULL
-    estimate.min = NULL; p.value.min = NULL
-    estimate.diff = NULL; p.value.diff = NULL
-    r2phylo.min = NULL; r2phylo.max = NULL; r2phylo.diff = NULL
-    r2sp.min = NULL; r2sp.max = NULL; r2sp.diff = NULL
-    Loglik.max = NULL;Loglik.min = NULL;Loglik.diff = NULL
-    Loglik.max.lm = NULL; Loglik.min.lm = NULL; Loglik.diff.lm = NULL
+    estimate.max = NULL; p.value.max = NULL;std.Error.max = NULL
+    estimate.min = NULL; p.value.min = NULL;std.Error.min = NULL
+    estimate.diff = NULL; p.value.diff = NULL;std.Error.diff = NULL
+    phylo.min = NULL; phylo.max = NULL; phylo.diff = NULL # species__ effect
+    sp.min = NULL; sp.max = NULL; sp.diff = NULL # species effect 
+    Loglik.max = NULL;Loglik.min = NULL;Loglik.diff = NULL # log likelihood with phylo signal
+    Loglik.max.lm = NULL; Loglik.min.lm = NULL; Loglik.diff.lm = NULL # log likelihood without phylo signal
+    R2.min = NULL; R2.max = NULL; R2.diff = NULL # overall R2 of pglmm
     
+    # dta$log.trophic_position = log(dta$trophic_position)
+    dta$log.BodyMass.Value = log10(dta$BodyMass.Value)
+    # dta$dist_S_km_min20_P.1 = log(dta$dist_S_km_min20_P.1)
+    # dta$dist_N_km_max20_P.1 = log(dta$dist_N_km_max20_P.1)
     
-    for (i in 1:loop){
-      
-      # shuffle the data
-      dta1 = dta[sample(nrow(dta),nrow(dta)),]
-      
-      # model with migratory status as a covariate
-      if (migrant == F){ 
-        # with pglmm
-        mod.min_shift = pglmm(shift_min20_P.1.3_dist_km ~ scale(log10(BodyMass.Value)) + scale(habitat_gen) + scale(normalised_indegree) + scale(diet_diversity) + scale(dist_N_km_max20_P.1) + scale(dist_S_km_min20_P.1)  +  migratory_binomial  + scale(trophic_position) + scale(outdegree) + scale(pc1_env) + scale(pc2_env) + scale(pc1_lc) + scale(pc2_lc) + scale(P.1) +
-                                (1|species__), data = dta1, family = "gaussian", cov_ranef = list(species = pruned_tree), REML = F)
-        # with lm
-        mod.min_shift_lm <- lm(shift_min20_P.1.3_dist_km ~ scale(log10(BodyMass.Value)) + scale(habitat_gen) + scale(normalised_indegree) + scale(diet_diversity) + scale(dist_N_km_max20_P.1) + scale(dist_S_km_min20_P.1)  +  migratory_binomial  + scale(trophic_position) + scale(outdegree) + scale(pc1_env) + scale(pc2_env) + scale(pc1_lc) + scale(pc2_lc) + scale(P.1)
-                                 , data = dta1)
-        # with pglmm
-        mod.max_shift <- pglmm(shift_max20_P.1.3_dist_km ~ scale(log10(BodyMass.Value)) + scale(habitat_gen) + scale(normalised_indegree) + scale(diet_diversity) + scale(dist_N_km_max20_P.1) + scale(dist_S_km_min20_P.1)  +  migratory_binomial  + scale(trophic_position) + scale(outdegree) + scale(pc1_env) + scale(pc2_env) + scale(pc1_lc) + scale(pc2_lc) + scale(P.1) +
-                                 (1|species__), data = dta1, family = "gaussian", cov_ranef = list(species = pruned_tree), REML = F)
-        
-        # with lm
-        mod.max_shift_lm <- lm(shift_max20_P.1.3_dist_km ~ scale(log10(BodyMass.Value)) + scale(habitat_gen) + scale(normalised_indegree) + scale(diet_diversity) + scale(dist_N_km_max20_P.1) + scale(dist_S_km_min20_P.1)  +  migratory_binomial  + scale(trophic_position) + scale(outdegree) + scale(pc1_env) + scale(pc2_env) + scale(pc1_lc) + scale(pc2_lc) + scale(P.1)
-                                 , data = dta1)
-        # with pglmm
-        mod.diff_shift = pglmm(shift_diff ~ scale(log10(BodyMass.Value)) + scale(habitat_gen) + scale(normalised_indegree) + scale(diet_diversity) + scale(dist_N_km_max20_P.1) + scale(dist_S_km_min20_P.1)  +  migratory_binomial  + scale(trophic_position) + scale(outdegree) + scale(pc1_env) + scale(pc2_env) + scale(pc1_lc) + scale(pc2_lc) + scale(P.1) +
-                                (1|species__), data = dta1, family = "gaussian", cov_ranef = list(species = pruned_tree), REML = F)
-        # with lm
-        mod.diff_shift_lm <- lm(shift_diff ~ scale(log10(BodyMass.Value)) + scale(habitat_gen) + scale(normalised_indegree) + scale(diet_diversity) + scale(dist_N_km_max20_P.1) + scale(dist_S_km_min20_P.1)  +  migratory_binomial  + scale(trophic_position) + scale(outdegree) + scale(pc1_env) + scale(pc2_env) + scale(pc1_lc) + scale(pc2_lc) + scale(P.1)
-                               , data = dta1)
-        
-        # model without migratory status as a covariate
-      }else{
-        # with pglmm
-        mod.min_shift = pglmm(shift_min20_P.1.3_dist_km ~ scale(log10(BodyMass.Value)) + scale(habitat_gen) + scale(normalised_indegree) + scale(diet_diversity) + scale(dist_N_km_max20_P.1) + scale(dist_S_km_min20_P.1)  +  scale(trophic_position) + scale(outdegree) + scale(pc1_env) + scale(pc2_env) + scale(pc1_lc) + scale(pc2_lc) + scale(P.1) +
-                                (1|species__), data = dta1, family = "gaussian", cov_ranef = list(species = pruned_tree), REML = F)
-        # with lm
-        mod.min_shift_lm <- lm(shift_min20_P.1.3_dist_km ~ scale(log10(BodyMass.Value)) + scale(habitat_gen) + scale(normalised_indegree) + scale(diet_diversity) + scale(dist_N_km_max20_P.1) + scale(dist_S_km_min20_P.1)  +  scale(trophic_position) + scale(outdegree) + scale(pc1_env) + scale(pc2_env) + scale(pc1_lc) + scale(pc2_lc) + scale(P.1)
-                                 , data = dta1)
-        # with pglmm
-        mod.max_shift <- pglmm(shift_max20_P.1.3_dist_km ~ scale(log10(BodyMass.Value)) + scale(habitat_gen) + scale(normalised_indegree) + scale(diet_diversity) + scale(dist_N_km_max20_P.1) + scale(dist_S_km_min20_P.1)  +  scale(trophic_position) + scale(outdegree) + scale(pc1_env) + scale(pc2_env) + scale(pc1_lc) + scale(pc2_lc) + scale(P.1) +
-                                 (1|species__), data = dta1, family = "gaussian", cov_ranef = list(species = pruned_tree), REML = F)
-        # with lm
-        mod.max_shift_lm <- lm(shift_max20_P.1.3_dist_km ~ scale(log10(BodyMass.Value)) + scale(habitat_gen) + scale(normalised_indegree) + scale(diet_diversity) + scale(dist_N_km_max20_P.1) + scale(dist_S_km_min20_P.1)  +  scale(trophic_position) + scale(outdegree) + scale(pc1_env) + scale(pc2_env) + scale(pc1_lc) + scale(pc2_lc) + scale(P.1)
-                                 , data = dta1)
-        # with pglmm
-        mod.diff_shift = pglmm(shift_diff ~ scale(log10(BodyMass.Value)) + scale(habitat_gen) + scale(normalised_indegree) + scale(diet_diversity) + scale(dist_N_km_max20_P.1) + scale(dist_S_km_min20_P.1)  +  scale(trophic_position) + scale(outdegree) + scale(pc1_env) + scale(pc2_env) + scale(pc1_lc) + scale(pc2_lc) + scale(P.1) +
-                                (1|species__), data = dta1, family = "gaussian", cov_ranef = list(species = pruned_tree), REML = F)
-        # with lm
-        mod.diff_shift_lm <- lm(shift_diff ~ scale(log10(BodyMass.Value)) + scale(habitat_gen) + scale(normalised_indegree) + scale(diet_diversity) + scale(dist_N_km_max20_P.1) + scale(dist_S_km_min20_P.1)  +  scale(trophic_position) + scale(outdegree) + scale(pc1_env) + scale(pc2_env) + scale(pc1_lc) + scale(pc2_lc) + scale(P.1)
-                               , data = dta1)
-        
-      }
+    # model with migratory status as a covariate
+    # with pglmm
+    mod.min_shift = pglmm(shift_min20_P.1.3_dist_km ~ scale(log.BodyMass.Value) + scale(habitat_gen) + scale(normalised_indegree) + scale(diet_diversity) + scale(dist_N_km_max20_P.1) + scale(dist_S_km_min20_P.1)  +  migratory_binomial  + scale(trophic_position) + scale(outdegree) + scale(pc1_env) + scale(pc2_env) + scale(pc1_lc) + scale(pc2_lc) + scale(P.1) +
+                            (1|species__), data = dta, family = "gaussian", cov_ranef = list(species = pruned_tree), REML = F)
+    # with lm
+    mod.min_shift_lm <- lm(shift_min20_P.1.3_dist_km ~ scale(log.BodyMass.Value) + scale(habitat_gen) + scale(normalised_indegree) + scale(diet_diversity) + scale(dist_N_km_max20_P.1) + scale(dist_S_km_min20_P.1)  +  migratory_binomial  + scale(trophic_position) + scale(outdegree) + scale(pc1_env) + scale(pc2_env) + scale(pc1_lc) + scale(pc2_lc) + scale(P.1)
+                           , data = dta)
+    # with pglmm
+    mod.max_shift <- pglmm(shift_max20_P.1.3_dist_km ~ scale(log.BodyMass.Value) + scale(habitat_gen) + scale(normalised_indegree) + scale(diet_diversity) + scale(dist_N_km_max20_P.1) + scale(dist_S_km_min20_P.1)  +  migratory_binomial  + scale(trophic_position) + scale(outdegree) + scale(pc1_env) + scale(pc2_env) + scale(pc1_lc) + scale(pc2_lc) + scale(P.1) +
+                             (1|species__), data = dta, family = "gaussian", cov_ranef = list(species = pruned_tree), REML = F)
+    
+    # with lm
+    mod.max_shift_lm <- lm(shift_max20_P.1.3_dist_km ~ scale(log.BodyMass.Value) + scale(habitat_gen) + scale(normalised_indegree) + scale(diet_diversity) + scale(dist_N_km_max20_P.1) + scale(dist_S_km_min20_P.1)  +  migratory_binomial  + scale(trophic_position) + scale(outdegree) + scale(pc1_env) + scale(pc2_env) + scale(pc1_lc) + scale(pc2_lc) + scale(P.1)
+                           , data = dta)
+    # with pglmm
+    mod.diff_shift = pglmm(shift_diff ~ scale(log.BodyMass.Value) + scale(habitat_gen) + scale(normalised_indegree) + scale(diet_diversity) + scale(dist_N_km_max20_P.1) + scale(dist_S_km_min20_P.1)  +  migratory_binomial  + scale(trophic_position) + scale(outdegree) + scale(pc1_env) + scale(pc2_env) + scale(pc1_lc) + scale(pc2_lc) + scale(P.1) +
+                             (1|species__), data = dta, family = "gaussian", cov_ranef = list(species = pruned_tree), REML = F)
+    # with lm
+    mod.diff_shift_lm <- lm(shift_diff ~ scale(log.BodyMass.Value) + scale(habitat_gen) + scale(normalised_indegree) + scale(diet_diversity) + scale(dist_N_km_max20_P.1) + scale(dist_S_km_min20_P.1)  +  migratory_binomial  + scale(trophic_position) + scale(outdegree) + scale(pc1_env) + scale(pc2_env) + scale(pc1_lc) + scale(pc2_lc) + scale(P.1)
+                            , data = dta)
+    
+          
       # save the outputs
       estimate.min = rbind(estimate.min, mod.min_shift$B)
       p.value.min = rbind(p.value.min, mod.min_shift$B.pvalue)
-      r2sp.min = rbind(r2sp.min, mod.min_shift$s2r[[1]])
-      r2phylo.min = rbind(r2phylo.min, mod.min_shift$s2r[[2]])
+      std.Error.min = rbind(std.Error.min, mod.min_shift$B.se)
+      sp.min = rbind(sp.min, mod.min_shift$s2r[[1]])
+      phylo.min = rbind(phylo.min, mod.min_shift$s2r[[2]])
       Loglik.min = rbind(Loglik.min, mod.min_shift$logLik)
       Loglik.min.lm = rbind(Loglik.min.lm, logLik(mod.min_shift_lm))
+      R2.min = rbind(R2.min, rr2::R2(mod.min_shift)[[1]])
       
       estimate.max = rbind(estimate.max, mod.max_shift$B)
       p.value.max = rbind(p.value.max, mod.max_shift$B.pvalue)
-      r2sp.max = rbind(r2sp.max, mod.max_shift$s2r[[1]])
-      r2phylo.max = rbind(r2phylo.max, mod.max_shift$s2r[[2]])
+      std.Error.max = rbind(std.Error.max, mod.max_shift$B.se)
+      sp.max = rbind(sp.max, mod.max_shift$s2r[[1]])
+      phylo.max = rbind(phylo.max, mod.max_shift$s2r[[2]])
       Loglik.max = rbind(Loglik.max, mod.max_shift$logLik)
       Loglik.max.lm = rbind(Loglik.max.lm, logLik(mod.max_shift_lm))
+      R2.max = rbind(R2.max, rr2::R2(mod.max_shift)[[1]])
       
       # expansion
       estimate.diff = rbind(estimate.diff, mod.diff_shift$B)
       p.value.diff = rbind(p.value.diff, mod.diff_shift$B.pvalue)
-      r2sp.diff = rbind(r2sp.diff, mod.diff_shift$s2r[[1]])
-      r2phylo.diff = rbind(r2phylo.diff, mod.diff_shift$s2r[[2]])
+      std.Error.diff = rbind(std.Error.max, mod.diff_shift$B.se)
+      sp.diff = rbind(sp.diff, mod.diff_shift$s2r[[1]])
+      phylo.diff = rbind(phylo.diff, mod.diff_shift$s2r[[2]])
       Loglik.diff = rbind(Loglik.diff, mod.diff_shift$logLik)
       Loglik.diff.lm = rbind(Loglik.diff.lm, logLik(mod.diff_shift_lm))
+      R2.diff = rbind(R2.diff, rr2::R2(mod.diff_shift)[[1]])
       
+    
+    print(mod[model])
+
+    # summary
+    test = data.frame(estimate.max = estimate.max, estimate.min = estimate.min, p.value.min = p.value.min, 
+                      p.value.max = p.value.max, var.min = rownames(estimate.min), var.max = rownames(estimate.max),
+                      model = mod[model], row.names = NULL, sp.max = sp.max, sp.min = sp.min, phylo.max = phylo.max, phylo.min = phylo.min,
+                      nrow = nrow(dta), Loglik.max.lm = Loglik.max.lm, Loglik.min.lm = Loglik.min.lm, Loglik.min = Loglik.min, Loglik.max = Loglik.max,
+                      estimate.diff = estimate.diff, p.value.diff = p.value.diff, var.diff = rownames(estimate.diff),Loglik.diff.lm = Loglik.diff.lm, Loglik.diff = Loglik.diff,
+                      sp.diff = sp.diff, phylo.diff = phylo.diff, se.diff = std.Error.diff, se.min = std.Error.min, se.max = std.Error.max,
+                      R2.min = R2.min, R2.max = R2.max, R2.diff = R2.diff)
+    
+    all_dta = rbind(all_dta, test)
+    
+    ###############################
+    ## plotting
+    
+    for (shift in c('shift_max20_P.1.3_dist_km','shift_min20_P.1.3_dist_km','shift_diff')){
+      
+      dta$Y = dta[,shift]
+      if (shift == 'shift_max20_P.1.3_dist_km'){mod.p = mod.max_shift} else if (shift =='shift_min20_P.1.3_dist_km'){mod.p = mod.min_shift} else {mod.p = mod.diff_shift}
+      
+      coef = mod.p$B
+      pvalue = mod.p$B.pvalue
+      
+      int = coef[1]
+      
+      coef = coef[which(pvalue<=0.05)]
+      names = rownames(pvalue)[which(pvalue<=0.05)]
+      
+      
+      library(stringr)
+      names = str_remove_all(names, c('scale\\('))
+      names = str_remove_all(names, c('\\)'))
+      names = str_remove_all(names, c('log\\('))
+      if("(Intercept" %in% names){names = names[-1]}
+      if("migratory_binomialMigrant" %in% names){names = names[-which(names == "migratory_binomialMigrant")]}
+      
+      par(mfrow = c(2,2))
+      
+      if(length(names)>0){
+        for(co in 1:length(names)){
+          print(names[co])
+          plot(y = dta[,'Y'], x = scale(dta[,names[co]]), pch = 20, main = paste(mod[model]), cex = 1,
+               ylab = shift, xlab = names[co])
+          # legend("bottomright", legend = d$ID.new.Bioregion, col = c(1:44), pch = 20, bty = "n")
+          abline(int, coef[co])
+          abline(0,0, col = 'pink')
+        }
+      }
     }
+  }
+  return(all_dta)
+}
+
+
+
+################################################################################################################
+
+mod = c("terrestrial",'northern','southern',"Passeriformes")
+dta_list = list(
+  subset(species_traits, Marine == 0), # terrestrial
+  subset(species_traits, Marine == 0 & distrib.core == 'north'), 
+  subset(species_traits, Marine == 0 & distrib.core == 'south'), 
+  subset(species_traits, IOCOrder == "Passeriformes" & Marine == 0) # passeriformes
+)
+
+all_dta = pglmm_shift(dta_list, mod = mod)
+unique(all_dta$model)
+
+
+### convert coefficients into km
+dta1 = subset(species_traits, Marine == 0 & distrib.core == 'north')
+dta1 = subset(species_traits, IOCOrder == "Passeriformes" & Marine == 0)
+
+## converting in units without scaling 
+mod.max_shift_km <- pglmm(shift_max20_P.1.3_dist_km ~ log10(BodyMass.Value) + habitat_gen + normalised_indegree + diet_diversity + dist_N_km_max20_P.1 + dist_S_km_min20_P.1  +  migratory_binomial  + trophic_position + outdegree + pc1_env + pc2_env + pc1_lc + pc2_lc + P.1 +
+                         (1|species__), data = dta1, family = "gaussian", cov_ranef = list(species = pruned_tree), REML = F)
+mod.max_shift <- pglmm(shift_max20_P.1.3_dist_km ~ scale(log10(BodyMass.Value)) + scale(habitat_gen) + scale(normalised_indegree) + scale(diet_diversity) + scale(dist_N_km_max20_P.1) + scale(dist_S_km_min20_P.1) + migratory_binomial +  scale(trophic_position) + scale(outdegree) + scale(pc1_env) + scale(pc2_env) + scale(pc1_lc) + scale(pc2_lc) + scale(P.1) +
+                         (1|species__), data = dta1, family = "gaussian", cov_ranef = list(species = pruned_tree), REML = F)
+
+summary(mod.max_shift_km)
+summary(mod.max_shift)
+
+21.7/sd(dta1$trophic_position)
+71.1/sd(dta1$outdegree)
+
+ggplot(data = dta1, aes(x = habitat_gen, y = shift_diff)) + geom_point() + geom_smooth()
+
+
+
+### putting the results into a nice table
+
+format.res = function(data){
+  
+  library(dplyr)
+  library(tidyr)
+  ## 1. rear edge
+  x.min <- as_tibble(data) %>% group_by(model, var.min) %>% summarise(p.value_mean = mean(p.value.min), estimate_mean = mean(estimate.min),  estimate_se = mean(se.min), nrow = mean(nrow), R2.rr2 = mean(R2.min))
+  x.min = merge(x.min, as_tibble(data) %>% group_by(model) %>% summarise(phylo.mean = mean(phylo.min), Loglik = mean(Loglik.min), Loglik.lm = mean(Loglik.min.lm)))
+  print("Rear edge")
+  x.min$significance = ifelse(x.min$p.value_mean<0.001,"***",ifelse(x.min$p.value_mean<0.01,"**",ifelse(x.min$p.value_mean<0.05,"*",ifelse(x.min$p.value_mean<0.1,".",""))))
+  x.min[which(x.min$p.value_mean<0.1),]
+  # round the results
+  x.min[,c("p.value_mean","estimate_mean","estimate_se","phylo.mean")] = 
+    round(x.min[,c("p.value_mean","estimate_mean","estimate_se","phylo.mean")],3)
+  
+  x.min_wide = rbind(cbind(pivot_wider(x.min[,c(colnames(x.min)[c(1,2,6:10)],"estimate_mean")], names_from = var.min, values_from = estimate_mean),value = "estimate_mean"),
+                     cbind(pivot_wider(x.min[,c(colnames(x.min)[c(1,2,6:10)],"estimate_se")], names_from = var.min, values_from = estimate_se),value = "estimate_se"),
+                     cbind(pivot_wider(x.min[,c(colnames(x.min)[c(1,2,6:10)],"p.value_mean")], names_from = var.min, values_from = p.value_mean),value = "p.value_mean"),
+                     cbind(pivot_wider(x.min[,c(colnames(x.min)[c(1,2,6:10)],"significance")], names_from = var.min, values_from = significance),value = "significance"))
+  x.min_wide$shift = "min"
+
+  ## 1. leading edge
+  x.max  <- as_tibble(data) %>% group_by(model, var.max) %>% summarise(p.value_mean = mean(p.value.max), estimate_mean = mean(estimate.max),  estimate_se = mean(se.max), nrow = mean(nrow), R2.rr2 = mean(R2.max))
+  x.max  = merge(x.max , as_tibble(data) %>% group_by(model) %>% summarise(phylo.mean = mean(phylo.max), Loglik = mean(Loglik.max), Loglik.lm = mean(Loglik.max.lm)))
+  x.max$significance = ifelse(x.max$p.value_mean<0.001,"***",ifelse(x.max$p.value_mean<0.01,"**",ifelse(x.max$p.value_mean<0.05,"*",ifelse(x.max$p.value_mean<0.1,".",""))))
+  ## print the significant variables
+  print("Leading edge")
+  x.max[which(x.max$p.value_mean<0.1),]
+  # round the results
+  x.max[,c("p.value_mean","estimate_mean","estimate_se","phylo.mean")] = 
+    round(x.max[,c("p.value_mean","estimate_mean","estimate_se","phylo.mean")],3)
+  
+  x.max_wide = rbind(cbind(pivot_wider(x.max[,c(colnames(x.max)[c(1,2,6:10)],"estimate_mean")], names_from = var.max, values_from = estimate_mean),value = "estimate_mean"),
+                     cbind(pivot_wider(x.max[,c(colnames(x.max)[c(1,2,6:10)],"estimate_se")], names_from = var.max, values_from = estimate_se),value = "estimate_se"),
+                     cbind(pivot_wider(x.max[,c(colnames(x.max)[c(1,2,6:10)],"p.value_mean")], names_from = var.max, values_from = p.value_mean),value = "p.value_mean"),
+                     cbind(pivot_wider(x.max[,c(colnames(x.max)[c(1,2,6:10)],"significance")], names_from = var.max, values_from = significance),value = "significance"))
+  x.max_wide$shift = "max"
+  
+  ## 3. expansion
+  x.diff  <- as_tibble(data) %>% group_by(model, var.diff) %>%
+    summarise(p.value_mean = mean(p.value.diff), estimate_mean = mean(estimate.diff), estimate_se = mean(se.diff), nrow = mean(nrow), R2.rr2 = mean(R2.diff))
+  x.diff  = merge(x.diff , as_tibble(data) %>% group_by(model) %>%
+                    summarise(phylo.mean = mean(phylo.diff), Loglik = mean(Loglik.diff), Loglik.lm = mean(Loglik.diff.lm)))
+  x.diff$significance = ifelse(x.diff$p.value_mean<0.001,"***",ifelse(x.diff$p.value_mean<0.01,"**",ifelse(x.diff$p.value_mean<0.05,"*",ifelse(x.diff$p.value_mean<0.1,".",""))))
+  print("Leading edge")
+  x.diff[which(x.diff$p.value_mean<0.1),]
+  x.diff[,c("p.value_mean","estimate_mean","estimate_se","phylo.mean")] = 
+    round(x.diff[,c("p.value_mean","estimate_mean","estimate_se","phylo.mean")],3)
+  
+  x.diff_wide = rbind(cbind(pivot_wider(x.diff[,c(colnames(x.diff)[c(1,2,6:10)],"estimate_mean")], names_from = var.diff, values_from = estimate_mean),value = "estimate_mean"),
+                      cbind(pivot_wider(x.diff[,c(colnames(x.diff)[c(1,2,6:10)],"estimate_se")], names_from = var.diff, values_from = estimate_se),value = "estimate_se"),
+                      cbind(pivot_wider(x.diff[,c(colnames(x.diff)[c(1,2,6:10)],"p.value_mean")], names_from = var.diff, values_from = p.value_mean),value = "p.value_mean"),
+                      cbind(pivot_wider(x.diff[,c(colnames(x.diff)[c(1,2,6:10)],"significance")], names_from = var.diff, values_from = significance),value = "significance"))
+  x.diff_wide$shift = "diff"
+  
+  ### combine everything
+  x.wide = rbind(x.max_wide,x.min_wide,x.diff_wide)
+  
+  x.wide$p.value.phylo = pchisq(2*(x.wide$Loglik - x.wide$Loglik.lm), df = 1, lower.tail = FALSE)
+  x.wide$r2.phylo = round(1 - exp(-2*(x.wide$Loglik - x.wide$Loglik.lm)/round(x.wide$nrow*0.95)),4)
+  
+  return(x.wide)
+  
+}
+
+x.wide = format.res(all_dta)
+
+
+setwd("E:/TheseSwansea/TraitStudy/Github/Range-shift-BTO-breeding-birds")
+write.csv(x.wide, "pglmm_scaled_terrestrialNS_PCs_Std.Error.R2.csv")
+
+
+###################################################################################
+### RUNNING MODELS WITHOUT SCALING TO GET COEFFICIENTS IN KM
+
+### FUNCTION FOR RUNNING ALL MODELS IN ONE LOOP
+mod_loop_km = function(dta_list, mod){
+  
+  library(car)
+  model = 0
+  all_dta = data.frame() # dataframe to store the data
+  
+  for (dta in dta_list){ # list of subsets to run the models for
+    
+    model = model + 1
+    
+    print(model)
+    
+    # variables to save
+    estimate.max = NULL; p.value.max = NULL;std.Error.max = NULL
+    estimate.min = NULL; p.value.min = NULL;std.Error.min = NULL
+    estimate.diff = NULL; p.value.diff = NULL;std.Error.diff = NULL
+    phylo.min = NULL; phylo.max = NULL; phylo.diff = NULL # species__ effect
+    sp.min = NULL; sp.max = NULL; sp.diff = NULL # species effect 
+    Loglik.max = NULL;Loglik.min = NULL;Loglik.diff = NULL # log likelihood with phylo signal
+    Loglik.max.lm = NULL; Loglik.min.lm = NULL; Loglik.diff.lm = NULL # log likelihood without phylo signal
+    R2.min = NULL; R2.max = NULL; R2.diff = NULL # overall R2 of pglmm
+      
+        # with pglmm
+        mod.min_shift = pglmm(shift_min20_P.1.3_dist_km ~ log10(BodyMass.Value) + habitat_gen + normalised_indegree + diet_diversity + dist_N_km_max20_P.1 + dist_S_km_min20_P.1  +  trophic_position + outdegree + pc1_env + pc2_env + pc1_lc + pc2_lc + P.1 +
+                                (1|species__), data = dta1, family = "gaussian", cov_ranef = list(species = pruned_tree), REML = F)
+        # with lm
+        mod.min_shift_lm <- lm(shift_min20_P.1.3_dist_km ~ log10(BodyMass.Value) + habitat_gen + normalised_indegree + diet_diversity + dist_N_km_max20_P.1 + dist_S_km_min20_P.1  +  trophic_position + outdegree + pc1_env + pc2_env + pc1_lc + pc2_lc + P.1
+                               , data = dta)
+        # with pglmm
+        mod.max_shift <- pglmm(shift_max20_P.1.3_dist_km ~ log10(BodyMass.Value) + habitat_gen + normalised_indegree + diet_diversity + dist_N_km_max20_P.1 + dist_S_km_min20_P.1  +  trophic_position + outdegree + pc1_env + pc2_env + pc1_lc + pc2_lc + P.1 +
+                                 (1|species__), data = dta1, family = "gaussian", cov_ranef = list(species = pruned_tree), REML = F)
+        # with lm
+        mod.max_shift_lm <- lm(shift_max20_P.1.3_dist_km ~ log10(BodyMass.Value) + habitat_gen + normalised_indegree + diet_diversity + dist_N_km_max20_P.1 + dist_S_km_min20_P.1  +  trophic_position + outdegree + pc1_env + pc2_env + pc1_lc + pc2_lc + P.1
+                               , data = dta)
+        # with pglmm
+        mod.diff_shift = pglmm(shift_diff ~ log10(BodyMass.Value) + habitat_gen + normalised_indegree + diet_diversity + dist_N_km_max20_P.1 + dist_S_km_min20_P.1  +  trophic_position + outdegree + pc1_env + pc2_env + pc1_lc + pc2_lc + P.1 +
+                                 (1|species__), data = dta1, family = "gaussian", cov_ranef = list(species = pruned_tree), REML = F)
+        # with lm
+        mod.diff_shift_lm <- lm(shift_diff ~ log10(BodyMass.Value) + habitat_gen + normalised_indegree + diet_diversity + dist_N_km_max20_P.1 + dist_S_km_min20_P.1  +  trophic_position + outdegree + pc1_env + pc2_env + pc1_lc + pc2_lc + P.1
+                                , data = dta)
+
+      # save the outputs
+      estimate.min = rbind(estimate.min, mod.min_shift$B)
+      p.value.min = rbind(p.value.min, mod.min_shift$B.pvalue)
+      std.Error.min = rbind(std.Error.min, mod.min_shift$B.se)
+      sp.min = rbind(sp.min, mod.min_shift$s2r[[1]])
+      phylo.min = rbind(phylo.min, mod.min_shift$s2r[[2]])
+      Loglik.min = rbind(Loglik.min, mod.min_shift$logLik)
+      Loglik.min.lm = rbind(Loglik.min.lm, logLik(mod.min_shift_lm))
+      R2.min = rbind(R2.min, rr2::R2(mod.min_shift)[[1]])
+      
+      estimate.max = rbind(estimate.max, mod.max_shift$B)
+      p.value.max = rbind(p.value.max, mod.max_shift$B.pvalue)
+      std.Error.max = rbind(std.Error.max, mod.max_shift$B.se)
+      sp.max = rbind(sp.max, mod.max_shift$s2r[[1]])
+      phylo.max = rbind(phylo.max, mod.max_shift$s2r[[2]])
+      Loglik.max = rbind(Loglik.max, mod.max_shift$logLik)
+      Loglik.max.lm = rbind(Loglik.max.lm, logLik(mod.max_shift_lm))
+      R2.max = rbind(R2.max, rr2::R2(mod.max_shift)[[1]])
+      
+      # expansion
+      estimate.diff = rbind(estimate.diff, mod.diff_shift$B)
+      p.value.diff = rbind(p.value.diff, mod.diff_shift$B.pvalue)
+      std.Error.diff = rbind(std.Error.max, mod.diff_shift$B.se)
+      sp.diff = rbind(sp.diff, mod.diff_shift$s2r[[1]])
+      phylo.diff = rbind(phylo.diff, mod.diff_shift$s2r[[2]])
+      Loglik.diff = rbind(Loglik.diff, mod.diff_shift$logLik)
+      Loglik.diff.lm = rbind(Loglik.diff.lm, logLik(mod.diff_shift_lm))
+      R2.diff = rbind(R2.diff, rr2::R2(mod.diff_shift)[[1]])
+      
+      
+      for (shift in c('shift_max20_P.1.3_dist_km','shift_min20_P.1.3_dist_km','shift_diff')){
+        
+        dta$Y = dta[,shift]
+        if (shift == 'shift_max20_P.1.3_dist_km'){mod.p = mod.max_shift} else if (shift =='shift_min20_P.1.3_dist_km'){mod.p = mod.min_shift} else {mod.p = mod.diff_shift}
+        
+        coef = mod.p$B
+        pvalue = mod.p$B.pvalue
+        
+        int = coef[1]
+        
+        coef = coef[which(pvalue<=0.05)]
+        names = rownames(pvalue)[which(pvalue<=0.05)]
+        
+        
+        library(stringr)
+        names = str_remove_all(names, c('scale\\('))
+        names = str_remove_all(names, c('\\)'))
+        names = str_remove_all(names, c('log\\('))
+        
+        par(mfrow = c(2,2))
+        
+        for(co in 1:length(names)){
+          print(names[co])
+          plot(y = dta[,'Y'], x = dta[,names[co]], pch = 20, main = paste(mod[model], names[co]), cex = 1,
+               ylab = shift, xlab = co)
+          # legend("bottomright", legend = d$ID.new.Bioregion, col = c(1:44), pch = 20, bty = "n")
+          abline(int, coef[co])
+          abline(0,0, col = 'pink')
+        }
+      }
     print(mod[model])
     
     # summary
     test = data.frame(estimate.max = estimate.max, estimate.min = estimate.min, p.value.min = p.value.min, 
                       p.value.max = p.value.max, var.min = rownames(estimate.min), var.max = rownames(estimate.max),
-                      model = mod[model], row.names = NULL, r2sp.max = r2sp.max, r2sp.min = r2sp.min, r2phylo.max = r2phylo.max, r2phylo.min = r2phylo.min,
+                      model = mod[model], row.names = NULL, sp.max = sp.max, sp.min = sp.min, phylo.max = phylo.max, phylo.min = phylo.min,
                       nrow = nrow(dta), Loglik.max.lm = Loglik.max.lm, Loglik.min.lm = Loglik.min.lm, Loglik.min = Loglik.min, Loglik.max = Loglik.max,
                       estimate.diff = estimate.diff, p.value.diff = p.value.diff, var.diff = rownames(estimate.diff),Loglik.diff.lm = Loglik.diff.lm, Loglik.diff = Loglik.diff,
-                      r2sp.diff = r2sp.diff, r2phylo.diff = r2phylo.diff)
+                      sp.diff = sp.diff, phylo.diff = phylo.diff, se.diff = std.Error.diff, se.min = std.Error.min, se.max = std.Error.max,
+                      R2.min = R2.min, R2.max = R2.max, R2.diff = R2.diff)
     
     all_dta = rbind(all_dta, test)
   }
@@ -234,126 +489,14 @@ dta_list = list(
   subset(species_traits, Marine == 0 & distrib.core == 'south'), 
   subset(species_traits, IOCOrder == "Passeriformes" & Marine == 0), # passeriformes
   subset(species_traits, IOCOrder != "Passeriformes" & Marine == 0) # non passeriformes
-  )
+)
 
-all_dta = mod_loop(dta_list, mod = mod)
-unique(all_dta$model)
+all_dta_km = mod_loop_km(dta_list, mod = mod)
 
+x.wide_km = format.res(all_dta_km)
 
-library(dplyr)
-library(tidyr)
+setwd("F:/TheseSwansea/TraitStudy/code_Miguel")
+write.csv(x.wide_km, "pglmm_scaled_terrestrialNS_PCs_Std.Error.R2.km.csv")
 
-### putting the results into a nice table
-
-format.res = function(data){
-  
-  ## 1. rear edge
-  x.min <- as_tibble(data) %>% group_by(model, var.min) %>% summarise(p.value_mean = mean(p.value.min), estimate_mean = mean(estimate.min),  estimate_sd = sd(estimate.max), nrow = mean(nrow))
-  x.min = merge(x.min, as_tibble(data) %>% group_by(model) %>% summarise(r2phylo.mean = mean(r2phylo.min), Loglik = mean(Loglik.min), Loglik.lm = mean(Loglik.min.lm)))
-  print("Rear edge")
-  x.min$significance = ifelse(x.min$p.value_mean<0.001,"***",ifelse(x.min$p.value_mean<0.01,"**",ifelse(x.min$p.value_mean<0.05,"*",ifelse(x.min$p.value_mean<0.1,".",""))))
-  x.min[which(x.min$p.value_mean<0.1),]
-  # round the results
-  x.min[,c("p.value_mean","estimate_mean","estimate_sd","r2phylo.mean")] = 
-    round(x.min[,c("p.value_mean","estimate_mean","estimate_sd","r2phylo.mean")],3)
-  
-  x.min_wide = rbind(cbind(pivot_wider(x.min[,c(colnames(x.min)[c(1,2,6:9)],"estimate_mean")], names_from = var.min, values_from = estimate_mean),value = "estimate_mean"),
-                     cbind(pivot_wider(x.min[,c(colnames(x.min)[c(1,2,6:9)],"estimate_sd")], names_from = var.min, values_from = estimate_sd),value = "estimate_sd"),
-                     cbind(pivot_wider(x.min[,c(colnames(x.min)[c(1,2,6:9)],"p.value_mean")], names_from = var.min, values_from = p.value_mean),value = "p.value_mean"),
-                     cbind(pivot_wider(x.min[,c(colnames(x.min)[c(1,2,6:9)],"significance")], names_from = var.min, values_from = significance),value = "significance"))
-  x.min_wide$shift = "min"
-  
-  ## 1. leading edge
-  x.max  <- as_tibble(data) %>% group_by(model, var.max) %>% summarise(p.value_mean = mean(p.value.max), estimate_mean = mean(estimate.max), estimate_sd = sd(estimate.max), nrow = mean(nrow))
-  x.max  = merge(x.max , as_tibble(data) %>% group_by(model) %>% summarise(r2phylo.mean = mean(r2phylo.max), Loglik = mean(Loglik.max), Loglik.lm = mean(Loglik.max.lm)))
-  x.max$significance = ifelse(x.max$p.value_mean<0.001,"***",ifelse(x.max$p.value_mean<0.01,"**",ifelse(x.max$p.value_mean<0.05,"*",ifelse(x.max$p.value_mean<0.1,".",""))))
-  ## print the significant variables
-  print("Leading edge")
-  x.max[which(x.max$p.value_mean<0.1),]
-  # round the results
-  x.max[,c("p.value_mean","estimate_mean","estimate_sd","r2phylo.mean")] = 
-    round(x.max[,c("p.value_mean","estimate_mean","estimate_sd","r2phylo.mean")],3)
-  
-  x.max_wide = rbind(cbind(pivot_wider(x.max[,c(colnames(x.max)[c(1,2,6:9)],"estimate_mean")], names_from = var.max, values_from = estimate_mean),value = "estimate_mean"),
-                     cbind(pivot_wider(x.max[,c(colnames(x.max)[c(1,2,6:9)],"estimate_sd")], names_from = var.max, values_from = estimate_sd),value = "estimate_sd"),
-                     cbind(pivot_wider(x.max[,c(colnames(x.max)[c(1,2,6:9)],"p.value_mean")], names_from = var.max, values_from = p.value_mean),value = "p.value_mean"),
-                     cbind(pivot_wider(x.max[,c(colnames(x.max)[c(1,2,6:9)],"significance")], names_from = var.max, values_from = significance),value = "significance"))
-  x.max_wide$shift = "max"
-  
-  ## 3. expansion
-  x.diff  <- as_tibble(data) %>% group_by(model, var.diff) %>%
-    summarise(p.value_mean = mean(p.value.diff), estimate_mean = mean(estimate.diff), estimate_sd = sd(estimate.diff), nrow = mean(nrow))
-  x.diff  = merge(x.diff , as_tibble(data) %>% group_by(model) %>%
-                    summarise(r2phylo.mean = mean(r2phylo.diff), Loglik = mean(Loglik.diff), Loglik.lm = mean(Loglik.diff.lm)))
-  x.diff$significance = ifelse(x.diff$p.value_mean<0.001,"***",ifelse(x.diff$p.value_mean<0.01,"**",ifelse(x.diff$p.value_mean<0.05,"*",ifelse(x.diff$p.value_mean<0.1,".",""))))
-  print("Leading edge")
-  x.diff[which(x.diff$p.value_mean<0.1),]
-  x.diff[,c("p.value_mean","estimate_mean","estimate_sd","r2phylo.mean")] = 
-    round(x.diff[,c("p.value_mean","estimate_mean","estimate_sd","r2phylo.mean")],3)
-  
-  x.diff_wide = rbind(cbind(pivot_wider(x.diff[,c(colnames(x.diff)[c(1,2,6:9)],"estimate_mean")], names_from = var.diff, values_from = estimate_mean),value = "estimate_mean"),
-                      cbind(pivot_wider(x.diff[,c(colnames(x.diff)[c(1,2,6:9)],"estimate_sd")], names_from = var.diff, values_from = estimate_sd),value = "estimate_sd"),
-                      cbind(pivot_wider(x.diff[,c(colnames(x.diff)[c(1,2,6:9)],"p.value_mean")], names_from = var.diff, values_from = p.value_mean),value = "p.value_mean"),
-                      cbind(pivot_wider(x.diff[,c(colnames(x.diff)[c(1,2,6:9)],"significance")], names_from = var.diff, values_from = significance),value = "significance"))
-  x.diff_wide$shift = "diff"
-  
-  ### combine everything
-  x.wide = rbind(x.max_wide,x.min_wide,x.diff_wide)
-  
-  x.wide$p.value.phylo = pchisq(2*(x.wide$Loglik - x.wide$Loglik.lm), df = 1, lower.tail = FALSE)
-  x.wide$r2 = round(1 - exp(-2*(x.wide$Loglik - x.wide$Loglik.lm)/round(x.wide$nrow*0.95)),4)
-  
-  return(x.wide)
-  
-}
-
-x.wide = format.res(all_dta)
-
-setwd("E:/TheseSwansea/TraitStudy/code_Miguel")
-write.csv(x.wide, "pglmm_scaled_terrestrialNS_PCs_Migrants.csv")
-
-
-################################################################################
-### test of radar chart
-
-library(fmsb)
-
-x.wide.chart_max = x.wide[which(x.wide$value == "estimate_mean"&x.wide$shift == "max"),]
-for (i in colnames(x.wide.chart_max[,7:20])){
-  x.wide.chart_max[,i] = as.numeric(x.wide.chart_max[,i])
-}
-max = as.numeric(lapply(x.wide.chart_max[,7:20], FUN = max))
-min = as.numeric(lapply(x.wide.chart_max[,7:20], FUN = min))
-x.wide.chart_max1 = data.frame(rbind(max,min,x.wide.chart_max[,7:20]))
-rownames(x.wide.chart_max1) = c("max","min",paste(x.wide.chart_max$model, x.wide.chart_max$shift))
-
-
-radarchart(x.wide.chart_max1, pcol = terrain.colors(7))
-legend("bottomright",legend = rownames(x.wide.chart_max1)[3:9], col = terrain.colors(7), bty = "n", pch = 20)
-
-
-x.wide.chart_min = x.wide[which(x.wide$value == "estimate_mean"&x.wide$shift == "min"),]
-for (i in colnames(x.wide.chart_min[,7:20])){
-  x.wide.chart_min[,i] = as.numeric(x.wide.chart_min[,i])
-}
-max = as.numeric(lapply(x.wide.chart_min[,7:20], FUN = max))
-min = as.numeric(lapply(x.wide.chart_min[,7:20], FUN = min))
-x.wide.chart_min1 = data.frame(rbind(max,min,x.wide.chart_min[,7:20]))
-rownames(x.wide.chart_min1) = c("max","min",paste(x.wide.chart_min$model, x.wide.chart_min$shift))
-
-
-
-
-radarchart(x.wide.chart_min1, pcol = terrain.colors(7))
-legend("bottomright",legend = rownames(x.wide.chart_min1)[3:9], col = terrain.colors(7), bty = "n", pch = 20)
-
-par(mfrow = c(1,2))
-
-
-radarchart(x.wide.chart_max1, pcol = terrain.colors(7), cglty = 1, cglcol = "gray", plty = 1)
-legend("bottomright",legend = rownames(x.wide.chart_max1)[3:9], col = terrain.colors(7), bty = "n", pch = 20)
-
-radarchart(x.wide.chart_min1, pcol = terrain.colors(7), cglty = 1, cglcol = "gray", plty = 1)
-legend("bottomright",legend = rownames(x.wide.chart_min1)[3:9], col = terrain.colors(7), bty = "n", pch = 20)
 
 
