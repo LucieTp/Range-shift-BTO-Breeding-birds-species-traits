@@ -18,12 +18,12 @@ library(sdm)
 ## Load map
 
 sf_UK  <- ne_states(country = 'United Kingdom', returnclass = "sf")
-sf_UK <- subset(sf_UK, !(name %in% c('Orkney','Shetland Islands') | region %in% c('Northern Ireland','')))
+sf_UK <- subset(sf_UK, !(name %in% c('Orkney','Shetland Islands','Eilean Siar','Isles of Scilly') | region %in% c('Northern Ireland','')))
 # sf_UK  <- ne_countries(scale = "medium", country = 'United Kingdom', returnclass = "sf")
 ggplot(data = sf_UK) + geom_sf()
 
 ## BTO Distribution data
-setwd("E:/TheseSwansea/TraitStudy/Github/Range-shift-BTO-breeding-birds")
+setwd("E:/TheseSwansea/TraitStudy/Github")
 BTO_distrib <- read.csv("data/distributions.csv", header=T) # period, sp code, season and grid for GB and Ireland
 
 ## BTO Species names data
@@ -61,27 +61,27 @@ Loc10 <- Loc10 %>%  filter(!is.na(long) & !is.na(lat))
 nloc <- nrow(Loc10)
 # 3867 locations occupied by birds
 
+Loc10_sf = st_as_sf(Loc10, coords = c('long', 'lat'), crs = crs(sf_UK))
+Loc10_locationNames = st_intersection(Loc10_sf, sf_UK)
+Loc10 = subset(Loc10, grid %in% Loc10_locationNames$grid)
+
+library(plyr)
+t.Out = ddply(BTO_distrib, c('speccode','periodN'), summarise, nb.Out = length(grid))
+
 # Join coordinates to occurrence data
 BTO_distrib <- BTO_distrib %>%  left_join(Loc10, by='grid')
 BTO_distrib <- BTO_distrib %>% filter(!is.na(long) & !is.na(lat))
 
-library(plyr)
-t = ddply(BTO_distrib, c('speccode','periodN'), summarise, nb.Orkney = length(which(lat > 58.7)), nb = length(lat), prop = nb.Orkney/nb)
 
-BTO_distrib_sf = st_as_sf(BTO_distrib, coords = c('lat', 'long'), crs = crs(sf_UK))
-BTO_distrib_location = st_intersection(BTO_distrib_sf, sf_UK)
-
-
-# remove locations abover a latitude of 58.7 to exlude Orkney and Shetland islands
-Loc10 = subset(Loc10, lat < 58.7)
-BTO_distrib = subset(BTO_distrib, lat < 58.7)
+t.Mainland = ddply(BTO_distrib, c('speccode','periodN'), summarise, nb.Mainland = length(grid))
+t = merge(t.Out, t.Mainland, by = c('speccode','periodN'))
+plot(t$nb.Out~t$nb.Mainland)
 
 ggplot(data = sf_UK) + geom_sf() +
   geom_point(data = Loc10, aes(x = long, y = lat), size = 1, shape = 23, fill = "darkred")
 
 ggplot(data = sf_UK) + geom_sf() +
   geom_point(data = unique(BTO_distrib[,c('lat','long')]), aes(x = long, y = lat), size = 1, shape = 23, fill = "darkred")
-
 
 ggplot(data = sf_UK) + geom_sf() +
   geom_point(data = unique(BTO_distrib[which(BTO_distrib$speccode == 71 & BTO_distrib$periodN == "P.1"),c('lat','long',"periodN")]), aes(x = long, y = lat, colour = periodN), size = 1, shape = 23, fill = "darkred")
@@ -130,54 +130,45 @@ download.file("https://ndownloader.figshare.com/files/5631081", temp)
 ET <- read.table(temp, header = TRUE, fill  = TRUE, quote = "\"", stringsAsFactors = FALSE,sep = "\t")
 unlink(temp)
 
-ET = rename(ET, scientific_name_ET = Scientific)
+names(ET)[which(names(ET) == 'Scientific')] = 'scientific_name_ET'
 
+ET$scientific_name = Spec$scientific_name[match(ET$scientific_name_ET,Spec$scientific_name)]
+names = setdiff(Spec$scientific_name,ET$scientific_name_ET)
 
 ## 1 - homogenizing taxonomy
 
-# transforming outdated scientific names for birds in the migration dtf into updated ones so they fit w/ sp traits dtf
-# first for the species where there is no confusion on which species name needs changing (i.e. single sp resembling the original name)
+## Tring different methods :
+################################################################################
+## library for taxonomic queries/synonyms
+library(taxize)
 
-names = setdiff(Spec$scientific_name,ET$scientific_name_ET)
-# replaces the old names with the matching name in the ET database
-split_names = unlist(str_split(names, " "))
-for (i in seq(2,length(split_names),2)){
-  if (nrow(ET[which(str_detect(ET$scientific_name, split_names[i])),])== 1){
-    print(paste(names[i/2], "/",split_names[i], "/", ET$scientific_name[str_detect(ET$scientific_name, split_names[i])]))
-    ET$scientific_name[str_detect(ET$scientific_name, split_names[i])] = as.character(names[i/2])
-  }
-}
+syn = synonyms(names,db = "itis")
+syn_df = synonyms_df(syn)
+syn_df = subset(syn_df, syn_name%in%ET$scientific_name_ET)[,c(".id","syn_name")]
+names(syn_df) = c('scientific_name','scientific_name_ET')
+ET$scientific_name[match(syn_df$scientific_name_ET,ET$scientific_name_ET)] = syn_df$scientific_name
 
 # then by hand for 11 species 
 names = Spec$scientific_name[which(!Spec$scientific_name%in%ET$scientific_name)]
-to_update = c("Anas strepera","Sterna sandvicensis","Sterna albifrons","Dendrocopos minor","Parus palustris",
-              "Parus montanus","Parus ater","Parus caeruleus","Carduelis chloris","Carduelis flavirostris","Miliaria calandra")
 
-for (i in to_update){
-  print(paste(ET$scientific_name[which(ET$scientific_name == i)],"/",names[str_detect(names,pattern = str_split(i, " ")[[1]][2])]))
-  ET$scientific_name[which(ET$scientific_name == i)] = as.character(names[str_detect(names,pattern = str_split(i, " ")[[1]][2])])
-}
+ET$scientific_name[which(ET$scientific_name_ET == 'Anas strepera')] = 'Mareca strepera' # https://avibase.bsc-eoc.org/species.jsp?lang=EN&avibaseid=9227AE600B1BC4CA&sec=synonyms
+ET$scientific_name[which(ET$scientific_name_ET == "Tetrao tetrix")] = 'Lyrurus tetrix' # https://avibase.bsc-eoc.org/species.jsp?lang=EN&avibaseid=D4441CD6E9C993EF&sec=synonyms
+ET$scientific_name[which(ET$scientific_name_ET == "Parus palustris")] = "Poecile palustris" # https://avibase.bsc-eoc.org/species.jsp?lang=EN&avibaseid=523763E55D4A8153&sec=synonyms
+ET$scientific_name[which(ET$scientific_name_ET == "Parus montanus")] = "Poecile montanus" # https://avibase.bsc-eoc.org/species.jsp?lang=EN&avibaseid=01D4B731BF3D081F&sec=synonyms
+ET$scientific_name[which(ET$scientific_name_ET == "Parus ater")] = "Periparus ater" #https://avibase.bsc-eoc.org/species.jsp?lang=EN&avibaseid=A4EBA919FCAFED5E&sec=synonyms
+ET$scientific_name[which(ET$scientific_name_ET == "Parus caeruleus")] = "Cyanistes caeruleus" # https://avibase.bsc-eoc.org/species.jsp?lang=EN&avibaseid=9BE53D340F9A4305&sec=synonyms
+ET$scientific_name[which(ET$scientific_name_ET == "Carduelis flammea")] = "Acanthis cabaret" # https://avibase.bsc-eoc.org/species.jsp?lang=EN&avibaseid=9BE53D340F9A4305&sec=synonyms
+ET$scientific_name[which(ET$scientific_name_ET == "Saxicola torquatus")] = "Saxicola rubicola" # https://avibase.bsc-eoc.org/species.jsp?lang=EN&avibaseid=0EA8F8B905405FB3&sec=synonyms
 
-# 3 species where I used related species from which they were recently split
-# species from Spec which are missing in ET:
-# c("Corvus cornix","Acanthis cabaret","Saxicola rubicola") # sous espèce de "Saxicola torquatus"
-
-ET[which(str_detect(ET$scientific_name, "Saxicola torquatus")),]$scientific_name = "Saxicola rubicola"
-ET[which(str_detect(ET$scientific_name, "Carduelis flammea")),]$scientific_name = "Acanthis cabaret" # lesser redpoll, common redpoll : acanthis flammea
-x = ET[which(str_detect(ET$scientific_name, "Corvus corone")),]
-x[,c("scientific_name")] = c("Corvus cornix")
-ET[length(ET)+1,] = x
-
-### can't find the last two species 
-
-# only two missing values now for migration strategy/ET instead of 23 in Spec1
-ET = rename(ET,english_name_ET = English)
+names(ET)[which(names(ET) == 'English')] = 'english_name_ET'
 Spec = Spec %>%  left_join(ET[,-match(c("SpecID","BLFamilyLatin","BLFamilyEnglish","BLFamSequID"),colnames(ET))], by = c("scientific_name"))
 
 summary(Spec)
-#write.csv(Spec, file="SpecTrait_122021.csv") 
+Spec = Spec[-which(Spec$scientific_name == 'Corvus cornix'),] # missing values
+write.csv(Spec, file="data/SpecTrait_062023_151sp.csv") 
 
 # SpecTrait_122021.csv file with 160 species 
+# SpecTrait_062023_151sp.csv analysis restricted to mainland UK
 
 nSpec <- nrow(Spec)
 spec_speccode <- Spec$speccode
@@ -191,59 +182,45 @@ spec_speccode <- Spec$speccode
 
 ## difference in mean location of the 20 most northern or most southern records
 library(geosphere)
-BTO_distrib = merge(BTO_distrib, Ngrid, by = 'speccode')
-BTO_distrib = BTO_distrib[which(BTO_distrib$speccode %in% unique(Spec$speccode)),]
-df_rangeshift <- data.frame(speccode=rep(spec_speccode,each = 20))
-
-
-
+df_rangeshift <- data.frame(speccode=spec_speccode)
 
 for(i in 1:nSpec){
-  for(n in 1:20){
-
   lat.all_P.1 <- sort(data.frame(BTO_distrib %>% filter(speccode == spec_speccode[i], periodN=="P.1") %>% dplyr::select(lat))$lat)
   lat.all_P.3 <- sort(data.frame(BTO_distrib %>% filter(speccode == spec_speccode[i], periodN=="P.3") %>% dplyr::select(lat))$lat)
+
+  lat.max20_P.1 <- tail(sort(lat.all_P.1), 20)
+  lat.max20_P.3 <- tail(sort(lat.all_P.3), 20)
   
-  lat.all_P.1 = sample(lat.all_P.1, 50)
-  lat.all_P.3 = sample(lat.all_P.3, 50)
-  
-  lat.max20_P.1 <- tail(sort(lat.all_P.1), 25)
-  lat.max20_P.3 <- tail(sort(lat.all_P.3), 25)
-  
-  lat.min20_P.1 <- head(sort(lat.all_P.1), 25)
-  lat.min20_P.3 <- head(sort(lat.all_P.3), 25)
+  lat.min20_P.1 <- head(sort(lat.all_P.1), 20)
+  lat.min20_P.3 <- head(sort(lat.all_P.3), 20)
   
   # distance from northern boundary at P.1 (distance the species has to expand towards the north)
-  df_rangeshift$dist_N_km_max20_P.1[(i-1)*20+n] <- distGeo(c(3,max(BTO_distrib$lat)), c(3, mean(lat.max20_P.1)))/1000*ifelse(max(BTO_distrib$lat)<mean(lat.max20_P.1), -1, 1)
+  df_rangeshift$dist_N_km_max20_P.1[i] <- distGeo(c(3,max(BTO_distrib$lat)), c(3, mean(lat.max20_P.1)))/1000*ifelse(max(Loc10$lat)<mean(lat.max20_P.1), -1, 1)
   
   # distance from southern boundary at P.1 (distance the species has to expand towards the south)
-  df_rangeshift$dist_S_km_min20_P.1[(i-1)*20+n] <- distGeo(c(3,min(BTO_distrib$lat)), c(3, mean(lat.min20_P.1)))/1000*ifelse(min(BTO_distrib$lat)>mean(lat.min20_P.1), -1, 1)
+  df_rangeshift$dist_S_km_min20_P.1[i] <- distGeo(c(3,min(BTO_distrib$lat)), c(3, mean(lat.min20_P.1)))/1000*ifelse(min(Loc10$lat)>mean(lat.min20_P.1), -1, 1)
   
   # difference in latitude
-  df_rangeshift$shift_max20_P.1.3[(i-1)*20+n] <- mean(lat.max20_P.3) - mean(lat.max20_P.1)
-  df_rangeshift$shift_min20_P.1.3[(i-1)*20+n] <- mean(lat.min20_P.3) - mean(lat.min20_P.1)
-  df_rangeshift$shift_all_P.1.3[(i-1)*20+n] <- mean(lat.all_P.3) - mean(lat.all_P.1)
+  df_rangeshift$shift_max20_P.1.3[i] <- mean(lat.max20_P.3) - mean(lat.max20_P.1)
+  df_rangeshift$shift_min20_P.1.3[i] <- mean(lat.min20_P.3) - mean(lat.min20_P.1)
+  df_rangeshift$shift_all_P.1.3[i] <- mean(lat.all_P.3) - mean(lat.all_P.1)
   
   # distance
-  df_rangeshift$shift_max20_P.1.3_dist_km[(i-1)*20+n] <- distGeo(c(3,mean(lat.max20_P.3)), c(3, mean(lat.max20_P.1)))/1000*ifelse(df_rangeshift$shift_max20_P.1.3[i]<0, -1, 1)
-  df_rangeshift$shift_min20_P.1.3_dist_km[(i-1)*20+n] <- distGeo(c(3,mean(lat.min20_P.3)), c(3, mean(lat.min20_P.1)))/1000*ifelse(df_rangeshift$shift_min20_P.1.3[i]<0, -1, 1)
-  df_rangeshift$shift_all_P.1.3_dist_km[(i-1)*20+n] <- distGeo(c(3,mean(lat.all_P.3)), c(3, mean(lat.all_P.1)))/1000*ifelse(df_rangeshift$shift_all_P.1.3[i]<0, -1, 1)
+  df_rangeshift$shift_max20_P.1.3_dist_km[i] <- distGeo(c(3,mean(lat.max20_P.3)), c(3, mean(lat.max20_P.1)))/1000*ifelse(df_rangeshift$shift_max20_P.1.3[i]<0, -1, 1)
+  df_rangeshift$shift_min20_P.1.3_dist_km[i] <- distGeo(c(3,mean(lat.min20_P.3)), c(3, mean(lat.min20_P.1)))/1000*ifelse(df_rangeshift$shift_min20_P.1.3[i]<0, -1, 1)
+  df_rangeshift$shift_all_P.1.3_dist_km[i] <- distGeo(c(3,mean(lat.all_P.3)), c(3, mean(lat.all_P.1)))/1000*ifelse(df_rangeshift$shift_all_P.1.3[i]<0, -1, 1)
  
-  # df_rangeshift$climate_velocity.max20.P.3[i] = mean(Loc10$Velocity[which(Loc10$lat %in% lat.max20_P.3)], na.rm = T)
-  # df_rangeshift$climate_velocity.min20.P.3[i] = mean(Loc10$Velocity[which(Loc10$lat %in% lat.min20_P.3)], na.rm = T)
+  df_rangeshift$nrecord_P.1[i] <- Spec$P.1[which(Spec$speccode == spec_speccode[i])]  # length(lat.all_P.1)  
+  df_rangeshift$nrecord_P.3[i] <- Spec$P.3[which(Spec$speccode == spec_speccode[i])]  # length(lat.all_P.3)
   
-  df_rangeshift$nrecord_P.1[(i-1)*20+n] <- Spec$P.1[which(Spec$speccode == spec_speccode[i])]  # length(lat.all_P.1)  
-  df_rangeshift$nrecord_P.3[(i-1)*20+n] <- Spec$P.3[which(Spec$speccode == spec_speccode[i])]  # length(lat.all_P.3)
-  
-  df_rangeshift$nsamp[(i-1)*20+n] = n
-  }
 }
 
 ## Save
 
-write.csv(x = df_rangeshift, file = "E:/TheseSwansea/TraitStudy/Github/Range-shift-BTO-breeding-birds/data/df_rangeshift_052023.NoOrkneyNoShetlands.csv")
+write.csv(x = df_rangeshift, file = "data/df_rangeshift_062023.Mainland.csv")
 # 01.2023 : added velocity of climate change
 # 05/2023 : no velocity but removed Ireland
+# 06/2023 : Mainland
 
 
 #############
@@ -258,8 +235,11 @@ Sptraits_Loc = merge(Loc10, BTO_distrib[which(BTO_distrib$speccode %in% unique(S
 Sptraits_Loc_sf <- Sptraits_Loc %>% st_as_sf(coords = c('long','lat')) %>%
   st_set_crs(crs(sf_UK))
 
-#transform Iceland from polygon shape to line
-UK_line <- st_cast(sf_UK, "MULTILINESTRING")
+UK_coast = ne_countries(scale = 'medium', country = 'United Kingdom', returnclass = 'sf')
+plot(UK_coast)
+
+#transform from polygon shape to line
+UK_line <- st_cast(UK_coast, "MULTILINESTRING")
 
 #calculation of the distance between the coast and our points
 d <- st_distance(UK_line, Sptraits_Loc_sf)
@@ -269,32 +249,29 @@ df <- data.frame(dist_km = as.vector(d)/1000,
 
 ggplot() + geom_point(data = df[sample(nrow(df), 0.1*nrow(df)),], aes(x = X, y = Y, colour = ifelse(dist_km<10,1,0)), size = .5) 
 
-# write.csv(df, "DistanceToCoast_BTO_160sp_1.csv")
+write.csv(df, "data/DistanceToCoast_062023.csv")
 
 # proportion of points that are within 20km from the shore
 prop_marine = df %>%
-  group_by(speccode = speccode) %>%
-  summarise(nb_grid = length(speccode), nb_grid_10km = sum(dist_km<10),
+  dplyr::group_by(speccode = speccode) %>%
+  dplyr::summarise(nb_grid = length(speccode), nb_grid_10km = sum(dist_km<10),
             prop_Marine10km = nb_grid_10km/nb_grid*100, 
             nb_grid_20km = sum(dist_km<20),
             prop_Marine20km = nb_grid_20km/nb_grid*100) %>% ungroup()
 
-#species_traits <- read.csv('E:/TheseSwansea/TraitStudy/code_Miguel/SpecTrait_11012022_159sp.csv', stringsAsFactors = FALSE, row.names = 1)
-#species_traits_prop = merge(species_traits, prop_marine)
+write.csv(prop_marine,"ProportionMarine_062023.csv")
 
-#write.csv(species_traits_prop,"Speciestraits_ProportionMarineBTOsp_159sp.csv")
+## check by plotting species that we consider "Marine"
+par(mar = c(2, 2, 2, 2))
 
-# ## check by plotting species that we consider "Marine"
-# par(mar = c(2, 2, 2, 2))
-# 
-# for (i in unique(prop_marine$speccode[which(prop_marine$prop_Marine20km>75)])){
-#   print(BTO_sp[which(BTO_sp$speccode == i),] )
-#   g = ggplot(data = sf_UK) + geom_sf() + 
-#     geom_point(data = merge(Loc10, BTO_distrib[which(BTO_distrib$speccode ==i),]), aes(x = long, y = lat, colour = periodN), size = 1) + 
-#     ggtitle(BTO_sp[which(BTO_sp$speccode == i),]$english_name)
-#   print(g)
-#   print(Spec[which(Spec$english_name == BTO_sp[which(BTO_sp$speccode == i),]$english_name),])
-# }
+for (i in unique(prop_marine$speccode[which(prop_marine$prop_Marine20km>75)])){
+  print(BTO_sp[which(BTO_sp$speccode == i),] )
+  g = ggplot(data = sf_UK) + geom_sf() +
+    geom_point(data = merge(Loc10, BTO_distrib[which(BTO_distrib$speccode ==i),]), aes(x = long, y = lat, colour = periodN), size = 1) +
+    ggtitle(BTO_sp[which(BTO_sp$speccode == i),]$english_name)
+  print(g)
+  print(Spec[which(Spec$english_name == BTO_sp[which(BTO_sp$speccode == i),]$english_name),])
+}
 
 
 
@@ -378,51 +355,6 @@ plot(values(tmp_seas.1_P.1), values(tmp_seas.1_P.3))
 # Convert to dataframe for ggplot
 df_tmp_seas.1_P.1 <- as.data.frame(tmp_seas.1_P.1, xy = TRUE)
 ggplot() + geom_raster(data = df_tmp_seas.1_P.1, aes(x = x, y = y, fill=layer))
-
-
-# ### CLIMATE VELOCITY
-# 
-# # install VoCC package for calculating climate velocity
-# # install.packages("devtools")
-# # devtools::install_github("JorGarMol/VoCC", dependencies = TRUE)
-# library(VoCC)
-# 
-# # calculate the average temperature per breeding year (n = 44)
-# # April to July (BTO survey time frame) for years 1968 to 2011
-# cru_seas.Velocity <- c(paste0("X", years_Velocity, ".04.16"), paste0("X", years_Velocity, ".05.16"), 
-#                        paste0("X", years_Velocity, ".06.16"), paste0("X", years_Velocity, ".07.16"))
-# 
-# cbind(cru_seas.Velocity, rep(1:length(years_Velocity), 4)) # assign a numerical index to each year
-# tmp_seas.Velocity = crop(stackApply(tmp[[cru_seas.Velocity]], indices=rep(1:length(years_Velocity), 4), fun=mean, na.rm=TRUE), sf_UK)
-# names(tmp_seas.Velocity) = years_Velocity
-# 
-# # check plots:
-# par(mfrow = c(2,1)); plot(tmp_seas.Velocity[["X1968"]], main = '1968');plot(tmp_seas.Velocity[["X2011"]],main = "2011")
-# 
-# # inspired from tutorial https://rpubs.com/nicoleamoore/climate-velocity
-# 
-# ## th = minimum number of observations in the series needed to calculate the trend at each cell
-# # temporal gradient
-# ttrend = tempTrend(r = tmp_seas.Velocity, th = 44) 
-# plot(ttrend)
-# 
-# 
-# # spatial gradient
-# spgrad = spatGrad(r = tmp_seas.Velocity, projected = FALSE) 
-# plot(spgrad)
-# 
-# ## calculate gradient based climate velocity:
-# gvocc = gVoCC(tempTrend = ttrend, spatGrad = spgrad)
-# plot(gvocc)
-# par(mfrow = c(2,1))
-# plot(log(gvocc[[1]]),main = "log")
-# plot(sf_UK[1], bg="transparent", col = "transparent", add = T)
-# plot(gvocc[[1]])
-# plot(sf_UK[1], bg="transparent", col = "transparent", add = T)
-# 
-# gplot(gvocc[[1]]) + geom_tile(aes(fill=factor(value),alpha=0.8))
-# 
-# Loc10$Velocity <- unlist(raster::extract(gvocc[[1]], data.frame(Loc10[ ,c("long", "lat")]), buffer = 10000))
 
 
 ######
