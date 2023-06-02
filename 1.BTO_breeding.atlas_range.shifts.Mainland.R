@@ -18,7 +18,7 @@ library(sdm)
 ## Load map
 
 sf_UK  <- ne_states(country = 'United Kingdom', returnclass = "sf")
-sf_UK <- subset(sf_UK, !(name %in% c('Orkney','Shetland Islands','Eilean Siar','Isles of Scilly') | region %in% c('Northern Ireland','')))
+sf_UK <- subset(sf_UK, !(name %in% c('Orkney','Shetland Islands') | region %in% c('Northern Ireland','')))
 # sf_UK  <- ne_countries(scale = "medium", country = 'United Kingdom', returnclass = "sf")
 ggplot(data = sf_UK) + geom_sf()
 
@@ -61,9 +61,7 @@ Loc10 <- Loc10 %>%  filter(!is.na(long) & !is.na(lat))
 nloc <- nrow(Loc10)
 # 3867 locations occupied by birds
 
-Loc10_sf = st_as_sf(Loc10, coords = c('long', 'lat'), crs = crs(sf_UK))
-Loc10_locationNames = st_intersection(Loc10_sf, sf_UK)
-Loc10 = subset(Loc10, grid %in% Loc10_locationNames$grid)
+Loc10 = subset(Loc10, lat < 58.7)
 
 library(plyr)
 t.Out = ddply(BTO_distrib, c('speccode','periodN'), summarise, nb.Out = length(grid))
@@ -159,16 +157,20 @@ ET$scientific_name[which(ET$scientific_name_ET == "Parus ater")] = "Periparus at
 ET$scientific_name[which(ET$scientific_name_ET == "Parus caeruleus")] = "Cyanistes caeruleus" # https://avibase.bsc-eoc.org/species.jsp?lang=EN&avibaseid=9BE53D340F9A4305&sec=synonyms
 ET$scientific_name[which(ET$scientific_name_ET == "Carduelis flammea")] = "Acanthis cabaret" # https://avibase.bsc-eoc.org/species.jsp?lang=EN&avibaseid=9BE53D340F9A4305&sec=synonyms
 ET$scientific_name[which(ET$scientific_name_ET == "Saxicola torquatus")] = "Saxicola rubicola" # https://avibase.bsc-eoc.org/species.jsp?lang=EN&avibaseid=0EA8F8B905405FB3&sec=synonyms
+ET$scientific_name[which(ET$scientific_name_ET == "Sterna albifrons")] = "Sternula albifrons"  # https://avibase.bsc-eoc.org/species.jsp?lang=EN&avibaseid=17310BF0FE9BAC8A&sec=synonyms
+
+
 
 names(ET)[which(names(ET) == 'English')] = 'english_name_ET'
 Spec = Spec %>%  left_join(ET[,-match(c("SpecID","BLFamilyLatin","BLFamilyEnglish","BLFamSequID"),colnames(ET))], by = c("scientific_name"))
 
 summary(Spec)
 Spec = Spec[-which(Spec$scientific_name == 'Corvus cornix'),] # missing values
-write.csv(Spec, file="data/SpecTrait_062023_151sp.csv") 
+write.csv(Spec, file="data/SpecTrait_062023_157sp.csv") 
 
 # SpecTrait_122021.csv file with 160 species 
 # SpecTrait_062023_151sp.csv analysis restricted to mainland UK
+# SpecTrait_062023_157sp < 58.7
 
 nSpec <- nrow(Spec)
 spec_speccode <- Spec$speccode
@@ -217,7 +219,7 @@ for(i in 1:nSpec){
 
 ## Save
 
-write.csv(x = df_rangeshift, file = "data/df_rangeshift_062023.Mainland.csv")
+write.csv(x = df_rangeshift, file = "data/df_rangeshift_062023.Mainland1.csv")
 # 01.2023 : added velocity of climate change
 # 05/2023 : no velocity but removed Ireland
 # 06/2023 : Mainland
@@ -245,11 +247,12 @@ UK_line <- st_cast(UK_coast, "MULTILINESTRING")
 d <- st_distance(UK_line, Sptraits_Loc_sf)
 df <- data.frame(dist_km = as.vector(d)/1000,
                  st_coordinates(Sptraits_Loc_sf), 
-                 Sptraits_Loc_sf[,1:10])
+                 st_drop_geometry(Sptraits_Loc_sf[,1:10]))
 
+## check that it looks fine
 ggplot() + geom_point(data = df[sample(nrow(df), 0.1*nrow(df)),], aes(x = X, y = Y, colour = ifelse(dist_km<10,1,0)), size = .5) 
 
-write.csv(df, "data/DistanceToCoast_062023.csv")
+write.csv(df, "data/DistanceToCoast_062023_157sp.csv")
 
 # proportion of points that are within 20km from the shore
 prop_marine = df %>%
@@ -259,7 +262,7 @@ prop_marine = df %>%
             nb_grid_20km = sum(dist_km<20),
             prop_Marine20km = nb_grid_20km/nb_grid*100) %>% ungroup()
 
-write.csv(prop_marine,"ProportionMarine_062023.csv")
+write.csv(prop_marine,"ProportionMarine_062023_157sp.csv")
 
 ## check by plotting species that we consider "Marine"
 par(mar = c(2, 2, 2, 2))
