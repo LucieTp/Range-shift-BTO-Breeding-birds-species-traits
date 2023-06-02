@@ -262,7 +262,7 @@ prop_marine = df %>%
             nb_grid_20km = sum(dist_km<20),
             prop_Marine20km = nb_grid_20km/nb_grid*100) %>% ungroup()
 
-write.csv(prop_marine,"ProportionMarine_062023_157sp.csv")
+write.csv(prop_marine,"data/ProportionMarine_062023_157sp.csv")
 
 ## check by plotting species that we consider "Marine"
 par(mar = c(2, 2, 2, 2))
