@@ -37,7 +37,7 @@ plot(data = species_traits.both,
 
 
 # Marine or non marine species : (Marine = >75% of points within 20km of the coastline)
-propmarine <- read.csv('ProportionMarine_062023_157sp.csv', stringsAsFactors = FALSE, row.names = 1)
+propmarine <- read.csv('Speciestraits_ProportionMarineBTOsp_159sp.csv', stringsAsFactors = FALSE, row.names = 1)
 
 species_traits = merge(species_traits, propmarine[,c('speccode','prop_Marine20km')])
 species_traits$Marine = ifelse(species_traits$prop_Marine20km>=75, 1, 0)
@@ -53,6 +53,7 @@ levels(species_traits$migratory_binomial) = c('Resident','Migrant')
 
 ## Keep only non coastal species
 species_traits = species_traits[which(species_traits$Marine == 0),]
+
 
 ###############################################################################
 
@@ -274,7 +275,7 @@ pglmm_shift = function(dta_list, mod){
       if(length(names)>0){
         for(co in 1:length(names)){          
           print(names[co])
-          jpeg(paste0('E:/TheseSwansea/TraitStudy/Github/plots/mcPlots.LinearModels.',mod[model],'.',shift,".jpg"), width = 800, height = 600, quality = 1000)
+          jpeg(paste0('E:/TheseSwansea/TraitStudy/Github/plots/mcPlots.LinearModels.',mod[model],'.',shift,'.',names[co],".jpg"), width = 800, height = 600, quality = 1000)
           car::mcPlot(mod.p, variable = names[co], overlaid = F, col.marginal='black', col.conditional= 'green4', title = F, new = F)
           # The second conditional plot is the added-variable plot of e(Y|Z) versus e(X|Z) where e(a|b) means the Pearson residuals from the regression of a on b.
           dev.off()
@@ -370,7 +371,7 @@ unique(all_dta$model)
 
 x.wide = format.res(all_dta)
 
-write.csv(x.wide, "E:/TheseSwansea/TraitStudy/Github/results/pglmm_scaled_terrestrialNS_PCs_Std.Error.R2.NoOrkneyNoShetlands_138sp.csv")
+write.csv(x.wide, "E:/TheseSwansea/TraitStudy/Github/results/pglmm_scaled_terrestrialNS_PCs_Std.Error.R2.NoOrkneyNoShetlands_136sp.csv")
 
 
 

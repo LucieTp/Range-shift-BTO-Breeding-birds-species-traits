@@ -257,8 +257,7 @@ write.csv(df, "data/DistanceToCoast_062023_157sp.csv")
 # proportion of points that are within 20km from the shore
 prop_marine = df %>%
   dplyr::group_by(speccode = speccode) %>%
-  dplyr::summarise(nb_grid = length(speccode), nb_grid_10km = sum(dist_km<10),
-            prop_Marine10km = nb_grid_10km/nb_grid*100, 
+  dplyr::summarise(nb_grid = length(speccode), 
             nb_grid_20km = sum(dist_km<20),
             prop_Marine20km = nb_grid_20km/nb_grid*100) %>% ungroup()
 

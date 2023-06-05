@@ -14,7 +14,7 @@ sf_UK  <- ne_states(country = 'United Kingdom', returnclass = "sf")
 sf_UK <- subset(sf_UK, !(name %in% c('Orkney','Shetland Islands') | region %in% c('Northern Ireland','')))
 
 ## Main table with all the species traits, range shift etc
-setwd("E:/TheseSwansea/TraitStudy/Github/Range-shift-BTO-breeding-birds")
+setwd("E:/TheseSwansea/TraitStudy/Github")
 species_traits <- read.csv('data/SpecTrait_012023_159sp.csv', stringsAsFactors = FALSE, row.names = 1)
 
 # Marine or non marine species : (Marine = >75% of points within 20km of the coastline)
@@ -209,8 +209,6 @@ library(stringr)
 library(tidyr)
 
 tb = read.csv2("results/pglmm_scaled_terrestrialNS_PCs_Std.Error.R2.NoOrkneyNoShetlands.Outliers.Logged.csv", sep =",", dec = ".")
-
-tb = read.csv2("results/pglmm_scaled_terrestrialNS_PCs_Std.Error.R2.NoOrkneyNoShetlands.NoOutliers.distLogged.csv", sep =",", dec = ".")
 tb_km = read.csv2("pglmm_scaled_terrestrialNS_PCs_Std.Error.R2.NoShetlandsNoOrkney.km.csv", sep =",", dec = ".")
 
 tb[,c("p.value.phylo", "r2", str_subset(names(tb), 'estimate'))] = round(tb[,c("p.value.phylo", "r2", str_subset(names(tb), 'estimate'))],2)
@@ -277,6 +275,81 @@ Southern.dist = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") + geom_poin
   stat_ellipse(data = loc[which(loc$Edge %in% c("Leading","Rear")),], aes(x = long, y = lat, colour = Edge), size = 1.2) + 
   geom_hline(yintercept = max(BTO_distrib$lat), linetype="dashed") + geom_hline(yintercept = min(BTO_distrib$lat), linetype="dashed") + 
   ggtitle("Southern species") + ylab("") + xlab("") + theme_classic(base_size =  20)
+
+loc = merge(Loc10, BTO_distrib[which(BTO_distrib$speccode == 95 & BTO_distrib$periodN == "P.1"),])
+loc$Edge = ifelse(loc$lat %in% tail(sort(loc$lat), 20), "Leading", ifelse(loc$lat %in% head(sort(loc$lat), 20), "Rear", "Middle"))
+
+################################################################################
+## NORTHERN LEADING EDGE
+library(cowplot)
+setwd("E:/TheseSwansea/TraitStudy/Github/Plots")
+
+loc = merge(Loc10, BTO_distrib[which(BTO_distrib$speccode == 95 & BTO_distrib$periodN == "P.1"),])
+loc$Edge = ifelse(loc$lat %in% tail(sort(loc$lat), 20), "Leading", ifelse(loc$lat %in% head(sort(loc$lat), 20), "Rear", "Middle"))
+
+Northern.dist.leading = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") + geom_point(data = loc, aes(x = long, y = lat), size = 1, shape = 15) + 
+  stat_ellipse(data = loc[which(loc$Edge %in% c("Leading")),], aes(x = long, y = lat, colour = Edge), size = 1.2) + 
+  geom_hline(yintercept = max(BTO_distrib$lat), linetype="dashed") + geom_hline(yintercept = min(BTO_distrib$lat), linetype="dashed") + 
+  xlim(-8,3) + ylab("") + xlab("") + theme_classic(base_size =  18) + guides(colour = 'none')+ 
+  theme(
+    panel.background = element_rect(fill='transparent'), #transparent panel bg
+    plot.background = element_rect(fill='transparent', color=NA), #transparent plot bg
+    panel.grid.major = element_blank(), #remove major gridlines
+    panel.grid.minor = element_blank(), #remove minor gridlines
+    legend.background = element_rect(fill='transparent'), #transparent legend bg
+    legend.box.background = element_rect(fill='transparent')) #transparent legend panel 
+
+ggsave2('Northern.dist.leading.png', scale = 1, dpi = 1000, bg='transparent')
+
+
+Northern.dist.rear = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") + geom_point(data = loc, aes(x = long, y = lat), size = 1, shape = 15) + 
+  stat_ellipse(data = loc[which(loc$Edge %in% c("Rear")),], aes(x = long, y = lat, colour = Edge), size = 1.2) + 
+  geom_hline(yintercept = max(BTO_distrib$lat), linetype="dashed") + geom_hline(yintercept = min(BTO_distrib$lat), linetype="dashed") + 
+  xlim(-8,3) + ylab("") + xlab("") + theme_classic(base_size =  18) + guides(colour = 'none') + 
+  theme(
+    panel.background = element_rect(fill='transparent'), #transparent panel bg
+    plot.background = element_rect(fill='transparent', color=NA), #transparent plot bg
+    panel.grid.major = element_blank(), #remove major gridlines
+    panel.grid.minor = element_blank(), #remove minor gridlines
+    legend.background = element_rect(fill='transparent'), #transparent legend bg
+    legend.box.background = element_rect(fill='transparent')) #transparent legend panel 
+
+ggsave2('Northern.dist.rear.png', scale = 1, dpi = 1000, bg='transparent')
+
+
+loc = merge(Loc10, BTO_distrib[which(BTO_distrib$speccode == 272 & BTO_distrib$periodN == "P.1"),])
+loc$Edge = ifelse(loc$lat %in% tail(sort(loc$lat), 20), "Leading", ifelse(loc$lat %in% head(sort(loc$lat), 20), "Rear", "Middle"))
+
+Southern.dist.leading = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") + geom_point(data = loc, aes(x = long, y = lat), size = 1, shape = 15) + 
+  stat_ellipse(data = loc[which(loc$Edge %in% c("Leading")),], aes(x = long, y = lat, colour = Edge), size = 1.2) + 
+  geom_hline(yintercept = max(BTO_distrib$lat), linetype="dashed") + geom_hline(yintercept = min(BTO_distrib$lat), linetype="dashed") + 
+  xlim(-8.5,3) + ylab("") + xlab("") + theme_classic(base_size =  18) + guides(colour = 'none')+ 
+  theme(
+    panel.background = element_rect(fill='transparent'), #transparent panel bg
+    plot.background = element_rect(fill='transparent', color=NA), #transparent plot bg
+    panel.grid.major = element_blank(), #remove major gridlines
+    panel.grid.minor = element_blank(), #remove minor gridlines
+    legend.background = element_rect(fill='transparent'), #transparent legend bg
+    legend.box.background = element_rect(fill='transparent')) #transparent legend panel 
+
+ggsave2('Southern.dist.leading.png', scale = 1, dpi = 1000, bg='transparent')
+
+
+Southern.dist.rear = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") + geom_point(data = loc, aes(x = long, y = lat), size = 1, shape = 15) + 
+  stat_ellipse(data = loc[which(loc$Edge %in% c("Rear")),], aes(x = long, y = lat, colour = Edge), size = 1.2) + 
+  geom_hline(yintercept = max(BTO_distrib$lat), linetype="dashed") + geom_hline(yintercept = min(BTO_distrib$lat), linetype="dashed") + 
+  xlim(-8.5,3) + ylab("") + xlab("") + theme_classic(base_size =  18) + guides(colour = 'none')+ 
+  theme(
+    panel.background = element_rect(fill='transparent'), #transparent panel bg
+    plot.background = element_rect(fill='transparent', color=NA), #transparent plot bg
+    panel.grid.major = element_blank(), #remove major gridlines
+    panel.grid.minor = element_blank(), #remove minor gridlines
+    legend.background = element_rect(fill='transparent'), #transparent legend bg
+    legend.box.background = element_rect(fill='transparent')) #transparent legend panel 
+
+ggsave2('Southern.dist.rear.png', scale = 1, dpi = 1000, bg='transparent')
+
+
 
 ### model results
 
