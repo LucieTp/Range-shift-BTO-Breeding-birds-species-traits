@@ -133,13 +133,9 @@ row.names(diet_matrix) <- species_traits$scientific_name_ET_
 diet_div <- vegan::diversity(diet_matrix)
 species_traits$diet_diversity <- diet_div
 
-
 ## 4. trophic positions for all species according to the metaweb
-# subset the EU metaweb for species in the UK
-m_uk_sub = as.matrix(m_uk[which(colnames(m_uk)%in%species_traits$scientific_name_web),
-                which(rownames(m_uk)%in%species_traits$scientific_name_web)])
-## takes a few mins to run
-trophic_pos <- TrophicPositionsNew(m_uk_sub) ## this function comes from utils.r code
+## /!\ takes a few mins to run
+trophic_pos <- TrophicPositionsNew(m_uk) ## this function comes from utils.r code
 names(trophic_pos) = c("scientific_name_web","trophic_position")
 species_traits = merge(species_traits, trophic_pos, all.x = T)
 
@@ -320,11 +316,32 @@ species_traits[which(species_traits$migratory == 'directional migratory'),]$migr
 species_traits = species_traits[-which(is.na(species_traits$trophic_position)),]
 
 summary(species_traits)
+
+
+################################################################################
+## HAND WING INDEX
+
+library(readxl)
+HWI = read_excel("data/Global-HWI-master/Dataset HWI 2020-04-10.xlsx")
+
+summary(HWI$HWI)
+setdiff(species_traits$scientific_name, HWI$`Species name`)
+setdiff(species_traits$scientific_name_ET, HWI$`Species name`)
+
+species_traits$scientific_name_HWI = species_traits$scientific_name
+species_traits$scientific_name_HWI[which(!species_traits$scientific_name_HWI %in% HWI$`Species name`)] = species_traits$scientific_name_ET[which(!species_traits$scientific_name_HWI %in% HWI$`Species name`)]
+
+setdiff(species_traits$scientific_name_HWI, HWI$`Species name`)
+species_traits$scientific_name_HWI[which(species_traits$scientific_name_HWI == "Phalacrocorax aristotelis")] = "Leucocarbo aristotelis"
+
+species_traits = merge(species_traits, HWI[,c('Species name', 'HWI')], by.x = 'scientific_name_HWI', by.y = 'Species name')
+summary(species_traits$HWI)
+
+
 ## 11/01/2022 : changed the indegree and outdegree using the right metaweb (UK not EU)
 ## 04/02/2022 : changed the trophic position using new function in utils (reran everything)
-## 062023 : reran with mainland only
+## 062023 : reran with mainland only and added HWI
 write.csv(species_traits, "data/SpecTrait_Full_062023_156sp.csv")
-
 
 
 

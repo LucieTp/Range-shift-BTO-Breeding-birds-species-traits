@@ -327,50 +327,29 @@ summary(species_traits)
 write.csv(species_traits, "data/SpecTrait_012023_159sp.csv")
 
 
-####################################################################################################
-## entire breeding range
+################################################################################
+## HAND WING INDEX
 
-library(sf)
-BOW = st_read("F:/TheseSwansea/dta.Occurrence/BirdLifeInternational/BOTW_2021/BOTW/BOTW.gdb")
+library(readxl)
+HWI = read_excel("data/Global-HWI-master/Dataset HWI 2020-04-10.xlsx")
 
-intersect(BOW$sci_name, species_traits$scientific_name)
-setdiff(str_replace(species_traits$species, '_', ' '), BOW$sci_name)
-setdiff(species_traits$scientific_name_ET, BOW$sci_name)
-setdiff(str_replace(species_traits$scientific_name_web, '_', ' '), BOW$sci_name)
+summary(HWI$HWI)
+setdiff(species_traits$scientific_name, HWI$`Species name`)
+setdiff(species_traits$scientific_name_ET, HWI$`Species name`)
 
-species_traits$species_BOW = species_traits$scientific_name
-setdiff(species_traits$species_BOW, BOW$sci_name)
+species_traits$scientific_name_HWI = species_traits$scientific_name
+species_traits$scientific_name_HWI[which(!species_traits$scientific_name_HWI %in% HWI$`Species name`)] = species_traits$scientific_name_ET[which(!species_traits$scientific_name_HWI %in% HWI$`Species name`)]
 
-species_traits$species_BOW[which(species_traits$scientific_name == "Acanthis cabaret")] = 
-  str_replace(species_traits[which(species_traits$scientific_name == "Acanthis cabaret"), 'species'], '_', ' ')
-species_traits$species_BOW[which(species_traits$scientific_name == "Saxicola rubicola")] = 
-  str_replace(species_traits[which(species_traits$scientific_name == "Saxicola rubicola"), 'species'], '_', ' ')
-species_traits$species_BOW[which(species_traits$scientific_name == "Coloeus monedula")] = 
-  str_replace(species_traits[which(species_traits$scientific_name == "Coloeus monedula"), 'species'], '_', ' ')
-species_traits$species_BOW[which(species_traits$scientific_name == "Chroicocephalus ridibundus")] = 
-  species_traits[which(species_traits$scientific_name == "Chroicocephalus ridibundus"), 'scientific_name_ET']
-species_traits$species_BOW[which(species_traits$scientific_name == "Corvus cornix")] = 
-  str_replace(species_traits[which(species_traits$scientific_name == "Corvus cornix"), 'scientific_name_web'], '_', ' ')
-species_traits$species_BOW[which(species_traits$scientific_name == "Sylvia communis")] = 'Curruca communis'
-species_traits$species_BOW[which(species_traits$scientific_name == "Sylvia curruca")] = 'Curruca curruca'
+setdiff(species_traits$scientific_name_HWI, HWI$`Species name`)
+species_traits$scientific_name_HWI[which(species_traits$scientific_name_HWI == "Phalacrocorax aristotelis")] = "Leucocarbo aristotelis"
 
-setdiff(species_traits$species_BOW, BOW$sci_name)
-
-## resident or breeding (seasonal 1 and 2) info from BOW metadata
-BOW_BTO = BOW[which(BOW$sci_name %in% species_traits$species_BOW & BOW$seasonal %in% c(1,2)),]
-
-st_write(BOW_BTO, "F:/TheseSwansea/TraitStudy/Github/Range-shift-BTO-breeding-birds/data/BOW_distributionMaps_BTOspecies.shp")
-
-season = ddply(BOW_BTO, 'sci_name', summarise, period = list(unique(seasonal)))
-season$count = unlist(lapply(season$period, length))
-BOW_BTO = BOW_BTO[-which(BOW_BTO$sci_name %in% season$sci_name[which(season$count == 2)] & BOW_BTO$seasonal == '1'),]
-
-st_write(BOW_BTO, "F:/TheseSwansea/TraitStudy/Github/Range-shift-BTO-breeding-birds/data/BOW_distributionMaps_BTOspecies_breeding.shp")
-
-# then selected only distributions that overlapped the UK in qgis
-BOW_BTO_UK = st_read("F:/TheseSwansea/TraitStudy/Github/Range-shift-BTO-breeding-birds/data/BOW_distributionMaps_BTOspecies_UK.shp")
-intersect(BOW_BTO_UK$sci_nam, species_traits$species_BOW)
+species_traits = merge(species_traits, HWI[,c('Species name', 'HWI')], by.x = 'scientific_name_HWI', by.y = 'Species name')
+summary(species_traits$HWI)
 
 
+## 11/01/2022 : changed the indegree and outdegree using the right metaweb (UK not EU)
+## 04/02/2022 : changed the trophic position using new function in utils (reran everything)
+## 062023 : reran with mainland only and added HWI
+write.csv(species_traits, "data/SpecTrait_Full_062023_159sp.csv")
 
 

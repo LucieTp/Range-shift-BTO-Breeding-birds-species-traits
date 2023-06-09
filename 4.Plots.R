@@ -18,7 +18,7 @@ library(stringr)
 sf_UK  <- ne_countries(scale = "medium", country = 'United Kingdom', returnclass = "sf")
 
 ## Main table with all the species traits, range shift etc
-setwd("E:/TheseSwansea/TraitStudy/Github/Range-shift-BTO-breeding-birds")
+setwd("E:/TheseSwansea/TraitStudy/Github")
 species_traits <- read.csv('data/SpecTrait_012023_159sp.csv', stringsAsFactors = FALSE, row.names = 1)
 
 # Marine or non marine species : (Marine = >75% of points within 20km of the coastline)
@@ -192,7 +192,7 @@ write.csv(towrite, 'SpeciesTraitsTable_paper1.csv')
 ### Outputs of PGLMMs in a nicer format
 
 
-tb = read.csv2("pglmm_scaled_terrestrialNS_PCs_Std.Error.R2.csv", sep =",", dec = ".")
+tb = read.csv2("results/pglmm_scaled_terrestrialNS_PCs_Std.Error.R2.HWI.csv", sep =",", dec = ".")
 tb_km = read.csv2("pglmm_scaled_terrestrialNS_PCs_Std.Error.R2.km.csv", sep =",", dec = ".")
 
 tb[,c("p.value.phylo", "r2", str_subset(names(tb), 'estimate'))] = round(tb[,c("p.value.phylo", "r2", str_subset(names(tb), 'estimate'))],2)
@@ -292,13 +292,13 @@ tb[,8:22] = apply(tb[,8:22], 2, as.numeric)
 
 tb2 = pivot_longer(tb, cols = 8:22, names_to = "covariate", values_to = "estimate")
 tb2 = pivot_wider(tb2[,2:13], values_from = estimate, names_from = value)
-tb2 = tb2[-which(str_detect(tb2$model, "Non passeriformes")),]
+# tb2 = tb2[-which(str_detect(tb2$model, "Non passeriformes")),]
 tb2$shift = ifelse(tb2$shift == "max", "leading edge shift",ifelse(tb2$shift == "min","rear edge shift", "Expansion"))
 
 tb2$significance = ifelse(tb2$p.value_mean<0.001,"***",ifelse(tb2$p.value_mean<0.01,"**",ifelse(tb2$p.value_mean<0.05,"*",ifelse(tb2$p.value_mean<0.1,".",""))))
 tb2$size = ifelse(tb2$p.value_mean<0.05,0.6,0.5)
 tb2$covariate = factor(tb2$covariate)
-levels(tb2$covariate) = c("Migrant status - Migrant","Diet diversity", "Northern boundary effect", "Southern boundary effect","Habitat generality","Log10 body mass", "Normalised number of prey", "Number of predators", "Range size", "Precipitation seasonality", "Association with forest/grasslands","Temperature seasonality","Association with urban areas/croplands","Trophic position","Intercept")
+levels(tb2$covariate) = c("Diet diversity", "Northern boundary effect", "Southern boundary effect","Habitat generality",'Hand wing index',"Log10 body mass", "Normalised number of prey", "Number of predators", "Range size", "Precipitation seasonality", "Association with forest/grasslands","Temperature seasonality","Association with urban areas/croplands","Trophic position","Intercept")
 
 tb2$CI_lo = tb2$estimate_mean - 1.96*tb2$estimate_se
 tb2$CI_up = tb2$estimate_mean + 1.96*tb2$estimate_se
@@ -356,7 +356,7 @@ ggsave2('ModelEstimates_Traits_maps.jpeg', scale = 2.2, dpi = 800)
 
 ### SPECIES TRAITS - no expansion
 labels = c('','','Forest/grassland','','Urban area/cropland','','Body mass','','Diet diversity','','Habitat generality','','Migratory status - Migrant','','Normalised indegree','','Precipitation seasonality','','Temperature seasonality','','Trophic position','','Vulnerability','')
-labels = c('','Association with forest/grassland','','Association with urban area/cropland','','Diet diversity','','Habitat generality','','Log 10 body mass','','Migratory status - Migrant','','Normalised number of prey','','Number of predators','','Association with precipitation','','Association with temperature','','Trophic position','')
+labels = c('','Association with forest/grassland','','Association with urban area/cropland','','Diet diversity','','Habitat generality','','Hand wing index','','Log 10 body mass','','Normalised number of prey','','Number of predators','','Association with precipitation','','Association with temperature','','Trophic position','')
 
 
 library(ggrepel)
