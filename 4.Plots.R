@@ -192,7 +192,7 @@ write.csv(towrite, 'SpeciesTraitsTable_paper1.csv')
 ### Outputs of PGLMMs in a nicer format
 
 
-tb = read.csv2("results/pglmm_scaled_terrestrialNS_PCs_Std.Error.R2.HWI.csv", sep =",", dec = ".")
+tb = read.csv2("results/pglmm_scaled_terrestrialNS_PCs_Std.Error.R2.csv", sep =",", dec = ".")
 tb_km = read.csv2("pglmm_scaled_terrestrialNS_PCs_Std.Error.R2.km.csv", sep =",", dec = ".")
 
 tb[,c("p.value.phylo", "r2", str_subset(names(tb), 'estimate'))] = round(tb[,c("p.value.phylo", "r2", str_subset(names(tb), 'estimate'))],2)
@@ -298,7 +298,15 @@ tb2$shift = ifelse(tb2$shift == "max", "leading edge shift",ifelse(tb2$shift == 
 tb2$significance = ifelse(tb2$p.value_mean<0.001,"***",ifelse(tb2$p.value_mean<0.01,"**",ifelse(tb2$p.value_mean<0.05,"*",ifelse(tb2$p.value_mean<0.1,".",""))))
 tb2$size = ifelse(tb2$p.value_mean<0.05,0.6,0.5)
 tb2$covariate = factor(tb2$covariate)
-levels(tb2$covariate) = c("Diet diversity", "Northern boundary effect", "Southern boundary effect","Habitat generality",'Hand wing index',"Log10 body mass", "Normalised number of prey", "Number of predators", "Range size", "Precipitation seasonality", "Association with forest/grasslands","Temperature seasonality","Association with urban areas/croplands","Trophic position","Intercept")
+levels(tb2$covariate) = list("Migrant status - Migrant" = "migratory_binomialMigrant",
+                             'Hand-wing index' = 'scale.HWI.',"Diet diversity" = "scale.diet_diversity.", 
+                             "Northern boundary effect" = "scale.dist_N_km_max20_P.1.", "Southern boundary effect" = "scale.dist_S_km_min20_P.1.",
+                             "Habitat generality" = "scale.habitat_gen.",
+                             "Log10 body mass" = "scale.log10.BodyMass.Value..", "Normalised number of prey" = "scale.normalised_indegree.", 
+                             "Number of predators" = "scale.outdegree.", "Range size" = "scale.P.1.", "Precipitation seasonality" = "scale.pc1_env.", 
+                             "Association with forest/grasslands" = "scale.pc1_lc.","Temperature seasonality" = "scale.pc2_env.",
+                             "Association with urban areas/croplands" = "scale.pc2_lc.","Trophic position" = "scale.trophic_position.",
+                             "Intercept" = "X.Intercept.")
 
 tb2$CI_lo = tb2$estimate_mean - 1.96*tb2$estimate_se
 tb2$CI_up = tb2$estimate_mean + 1.96*tb2$estimate_se
@@ -357,6 +365,8 @@ ggsave2('ModelEstimates_Traits_maps.jpeg', scale = 2.2, dpi = 800)
 ### SPECIES TRAITS - no expansion
 labels = c('','','Forest/grassland','','Urban area/cropland','','Body mass','','Diet diversity','','Habitat generality','','Migratory status - Migrant','','Normalised indegree','','Precipitation seasonality','','Temperature seasonality','','Trophic position','','Vulnerability','')
 labels = c('','Association with forest/grassland','','Association with urban area/cropland','','Diet diversity','','Habitat generality','','Hand wing index','','Log 10 body mass','','Normalised number of prey','','Number of predators','','Association with precipitation','','Association with temperature','','Trophic position','')
+# with migratory status
+labels = c('','Association with forest/grassland','','Association with urban area/cropland','','Diet diversity','','Habitat generality','','Log 10 body mass','','Migrant status - Migrant','','Normalised number of prey','','Number of predators','','Association with precipitation','','Association with temperature','','Trophic position','')
 
 
 library(ggrepel)
@@ -376,9 +386,8 @@ g4 = ggplot(data = traits_nodiff[which(traits_nodiff$model == "terrestrial"),], 
 ggarrange(g1,Northern.dist,g3, g2,Southern.dist,g4, common.legend = T, labels = c('a','','c','b','','d'), widths = c(1.5,1,1.5), font.label = list(size = 20))
 
 
-setwd("E:/TheseSwansea/TraitStudy/code_Miguel/Plots")
 ## Figure 1 - Estimates from GLMM 
-ggsave('ModelEstimates_Traits_maps.nodiff.CI.jpeg', scale = 2.2, dpi = 1200, bg = "white")
+ggsave('plots/ModelEstimates_Traits_maps.nodiff.CI.WholeStudy.jpeg', scale = 2.2, dpi = 1200, bg = "white")
 ggsave('ModelEstimates_Traits_maps.nodiff.CI.pdf', scale = 2.2, dpi = 1200, bg = "white", device = "pdf")
 
 

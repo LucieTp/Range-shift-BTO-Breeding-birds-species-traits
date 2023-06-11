@@ -355,8 +355,8 @@ format.res = function(data){
 x.wide = format.res(all_dta)
 
 
-setwd("E:/TheseSwansea/TraitStudy/Github/results")
-write.csv(x.wide, "pglmm_scaled_terrestrialNS_PCs_Std.Error.R2.HWI.csv")
+
+write.csv(x.wide, "results/pglmm_scaled_terrestrialNS_PCs_Std.Error.R2.HWI.csv")
 
 
 ###################################################################################
