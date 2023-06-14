@@ -32,6 +32,16 @@ species_traits = subset(species_traits, !speccode %in% c(71,910))
 
 species_traits.mainland = subset(species_traits.mainland, speccode %in% species_traits$speccode)
 
+species_traits$log10BodyMass.Value = log10(species_traits$BodyMass.Value)
+species_traits$shift_diff = (species_traits$shift_max20_P.1.3_dist_km - species_traits$shift_min20_P.1.3_dist_km)
+# we used the distribution core relative to middle of the mainland not the whole study to classify sp
+# as Northern or Southern
+species_traits = merge(species_traits[,-which(names(species_traits) == 'distrib.core')], species_traits.mainland[,c('speccode','distrib.core')], by = 'speccode', all.x = T) # keep distribution core from the mainland study to compare results
+
+species_traits.mainland$log10BodyMass.Value = log10(species_traits.mainland$BodyMass.Value)
+species_traits.mainland$shift_diff = (species_traits.mainland$shift_max20_P.1.3_dist_km - species_traits.mainland$shift_min20_P.1.3_dist_km)
+
+
 ## BTO Data (occurrence data per grid cell for all of UK) - used for distribution maps
 BTO_grid <- read.csv("data/grid_square_coordinates_lookup.csv", header=T)
 BTO_distrib <- read.csv("data/distributions.csv", header=T) # period, sp code, season and grid for GB and Ireland
@@ -62,7 +72,23 @@ BTO_distrib <- BTO_distrib %>%  left_join(Loc10, by='grid')
 BTO_distrib <- BTO_distrib %>% filter(!is.na(long) & !is.na(lat))
 
 BTO_distrib = merge(Loc10, BTO_distrib, all.y = T)
+BTO_distrib = subset(BTO_distrib, speccode %in% species_traits$speccode)
+BTO_distrib = subset(BTO_distrib, period %in% c("1968-72","2008-11"))
 
+### Correlation between variables
+
+library(corrplot)
+species_traits$log10BodyMass.Value = log(species_traits$BodyMass.Value)
+cov = species_traits[,c("log10BodyMass.Value", "pc1_lc" , "pc2_lc" , "pc1_env" , "pc2_env" , "habitat_gen" , "normalised_indegree" , 
+                        "diet_diversity" , "nrecord_P.1" , "outdegree" , "trophic_position" , "HWI", 
+                        'dist_N_km_max20_P.1','dist_S_km_min20_P.1')]
+
+names(cov) = c('logged body mass', 'Forest and grassland', 'Urban and agricultural', 'Precipitation', 'Temperature', 'Habitat generality',
+               'Normalised number of prey','Diet diversity','Range size','Number of prey','Trophic position','Hand-wing index','Northern boundary',
+               'Southern boundary')
+
+M <- cor(cov, use = 'complete.obs')
+corrplot(M, type="upper", order="hclust")
 
 ################################################################################
 ## SHIFT DIRECTIONALITY
@@ -196,11 +222,14 @@ species_traits = species_traits[which(species_traits$Marine == 0),]
 ### TABLE S1
 ################################################################################
 
-names = c('scientific_name','english_name',"Marine",'prop_Marine20km',"dist_S_km_min20_P.1","dist_N_km_max20_P.1",'P.1','lat_mean.P.1','distrib.core','IOCOrder','BodyMass.Value','shift_max20_P.1.3_dist_km','shift_min20_P.1.3_dist_km','shift_diff','outdegree',"pc1_env","pc2_env","pc1_lc" ,"pc2_lc", "normalised_indegree","diet_diversity","trophic_position","habitat_gen")
+names = c('scientific_name','english_name',"Marine",'prop_Marine20km','lat_mean.P.1','distrib.core','IOCOrder','shift_max20_P.1.3_dist_km','shift_min20_P.1.3_dist_km','shift_diff',"dist_S_km_min20_P.1","dist_N_km_max20_P.1",'P.1','log10BodyMass.Value','outdegree',"pc1_env","pc2_env","pc1_lc" ,"pc2_lc", "normalised_indegree","diet_diversity","trophic_position","habitat_gen",'HWI')
 towrite = species_traits[,names]
-names(towrite) = c('Scientific name','English name',"Marine species", 'Proportion of coastal grid cells',"Southern boundary effect","Northern boundary effect",'Number of grid cells in P1','Mean latitude of grid cells in P1','Distribution core','Taxonomy','Body Mass (g)','Shift in leading edge between P1 and P2 (km)','Shift in rear edge between P1 and P2 (km)','Range expansion (km)','Vulnerability',"Association with precipitation seasonality","Association with temperature seasonality","Association with forest and grassland" ,"Association with urban and cropland", "Normalised indegree","Diet diversity","Trophic position","Habitat generality")
-towrite[,c(4:8,11:23)] = round(towrite[,c(4:8,11:23)], 2)
-write.csv(towrite, 'SpeciesTraitsTable_paper1.csv')
+towrite = merge(towrite, species_traits.mainland[,c('scientific_name','shift_max20_P.1.3_dist_km','shift_min20_P.1.3_dist_km','shift_diff',"dist_S_km_min20_P.1","dist_N_km_max20_P.1",'P.1')], by = 'scientific_name')
+
+names(towrite) = c('Scientific name','English name',"Marine species", 'Proportion of coastal grid cells','Mean latitude of grid cells in P1 (mainland)','Distribution core','Taxonomy','Shift in leading edge between P1 and P3 (km) - mainland','Shift in rear edge between P1 and P3 (km) - mainland','Range expansion (km) - mainland',"Southern boundary effect - mainland","Northern boundary effect - mainland",'Range size - mainland','Body Mass (g)','Number of predators',"Association with precipitation","Association with temperature","Association with forest and grassland" ,"Association with urban and cropland", "Normalised indegree","Diet diversity","Trophic position","Habitat generality",'Hand-wing index','Shift in leading edge between P1 and P3 (km) - whole study','Shift in rear edge between P1 and P3 (km) - whole study','Range expansion (km) - whole study',"Southern boundary effect - mainland","Northern boundary effect - whole study",'Range size - whole study')
+towrite[,c(4:5,8:30)] = round(towrite[,c(4:5,8:30)], 2)
+write.csv(towrite, 'SpeciesTraitsTableS1_paper.WholeStudy.Mainland.csv')
+
 
 ################################################################################
 ### Outputs of PGLMMs in a nicer format
@@ -298,30 +327,82 @@ safe_colorblind_palette <- c("#88CCEE", "#CC6677", "#DDCC77", "#117733", "#33228
                              "#44AA99", "#999933", "#882255", "#661100", "#6699CC", "#888888")
 scales::show_col(safe_colorblind_palette)
 
-### plots with background
-loc = merge(Loc10, BTO_distrib[which(BTO_distrib$speccode == 95 & BTO_distrib$periodN == "P.1"),])
-loc$Edge = ifelse(loc$lat %in% tail(sort(loc$lat), 20), "Leading", ifelse(loc$lat %in% head(sort(loc$lat), 20), "Rear", "Middle"))
+loc = merge(Loc10, BTO_distrib[which(BTO_distrib$speccode == 95),])
+loc$Edge = NA
+loc$Edge[which(loc$period == "1968-72")] = ifelse(loc$lat[which(loc$period == "1968-72")] %in% tail(sort(loc$lat[which(loc$period == "1968-72")]), 20), "Leading", 
+                                                  ifelse(loc$lat[which(loc$period == "1968-72")] %in% head(sort(loc$lat[which(loc$period == "1968-72")]), 20), "Rear", "Middle"))
 
-Northern.dist = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") + geom_point(data = loc, aes(x = long, y = lat), size = 1.5, shape = 15) + 
-  stat_ellipse(data = loc[which(loc$Edge %in% c("Leading","Rear")),], aes(x = long, y = lat, colour = Edge), size = 2) + 
-  geom_hline(yintercept = max(BTO_distrib$lat), linetype="dashed", size = 2) + geom_hline(yintercept = min(BTO_distrib$lat), linetype="dashed", size = 2) + 
-  ggtitle("Northern species - Whole study") + ylab("") + xlab("") + theme_classic(base_size =  23) + xlim(min(loc$long) - 1, max(Coord10$long))
+loc$Edge[which(loc$period == "2008-11")] = ifelse(loc$lat[which(loc$period == "2008-11")] %in% tail(sort(loc$lat[which(loc$period == "2008-11")]), 20), "Leading", 
+                                                  ifelse(loc$lat[which(loc$period == "2008-11")] %in% head(sort(loc$lat[which(loc$period == "2008-11")]), 20), "Rear", "Middle"))
 
-# ggsave('plots/NorthernDist.WholeStudy.MainPlot.jpeg', Northern.dist, scale = 2, dpi = 500, bg= 'transparent')
+Northern.dist = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") + geom_point(data = loc, aes(x = long, y = lat, colour = period), size = 1.5, shape = 15) +
+  stat_ellipse(data = loc[which(loc$Edge %in% c("Leading","Rear")),], aes(x = long, y = lat, colour = Edge, linetype = period), size = 2) +
+  geom_hline(yintercept = min(BTO_distrib$lat), linetype="dashed", size = 2) + geom_hline(yintercept = max(Loc10$lat), linetype="dashed", size = 2) + scale_colour_manual(values = c("black", "gray57","#CC6677","#88CCEE")) +
+  ggtitle("Northern species - Whole study") + ylab("") + xlab("") + theme_classic(base_size =  23) + xlim(min(loc$long) - 1, max(Coord10$long)) +
+  theme(legend.direction = "vertical", legend.box = "horizontal") +
+  theme(legend.position = "none")
 
-loc = merge(Loc10, BTO_distrib[which(BTO_distrib$speccode == 272 & BTO_distrib$periodN == "P.1"),])
-loc$Edge = ifelse(loc$lat %in% tail(sort(loc$lat), 20), "Leading", ifelse(loc$lat %in% head(sort(loc$lat), 20), "Rear", "Middle"))
+l1 = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") + geom_point(data = loc, aes(x = long, y = lat, colour = period), size = 1.5, shape = 15) +
+  scale_color_manual(name = "Time period",values = c("black", "gray57","#CC6677","#88CCEE")) + 
+  theme(legend.direction = "vertical", legend.box = "vertical", legend.text=element_text(size=15))
+leg1 <- get_legend(l1)
 
-Southern.dist = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") + geom_point(data = loc, aes(x = long, y = lat), size = 1.5, shape = 15) + 
-  stat_ellipse(data = loc[which(loc$Edge %in% c("Leading","Rear")),], aes(x = long, y = lat, colour = Edge), size = 2) + 
-  geom_hline(yintercept = max(BTO_distrib$lat), linetype="dashed", size = 2) + geom_hline(yintercept = min(BTO_distrib$lat), linetype="dashed", size = 2) + 
-  ggtitle("Southern species - Whole study") + ylab("") + xlab("") + theme_classic(base_size =  23) + xlim(min(loc$long) - 1, max(Coord10$long)) 
+l2 = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") +   
+  stat_ellipse(data = loc[which(loc$Edge %in% c("Leading","Rear")),], aes(x = long, y = lat, colour = Edge, linetype = period), size = 2) +
+  scale_color_manual(name = "Range edge",values = c("#CC6677","#88CCEE")) + 
+  theme(legend.direction = "vertical", legend.box = "vertical", legend.text=element_text(size=15)) 
+leg2 <- get_legend(l2)
 
-# ggsave('plots/SouthernDist.WholeStudy.MainPlot.jpeg', Southern.dist, scale = 2, dpi = 500, bg= 'transparent')
+library(patchwork)
+blank_p <- plot_spacer() + theme_void()
+leg12 <- plot_grid(leg1,leg2,blank_p,ncol = 1)
 
-ggarrange(Southern.dist, Northern.dist)
+final_p <- plot_grid(Northern.dist,leg12, rel_widths = c(1,0.1))
+final_p 
 
-ggsave('plots/NS.Dist.WholeStudy.MainPlot.jpeg', scale = 2.5, dpi = 500, bg= 'transparent')
+# ggsave('plots/NorthernDist.Mainland.MainPlots.Dchange.jpeg', Northern.dist, scale = 2, dpi = 500, bg= 'transparent')
+
+loc = merge(Loc10, BTO_distrib[which(BTO_distrib$speccode == 272),])
+# loc = merge(Loc10, BTO_distrib[which(BTO_distrib$speccode == 66),]) # 46, 66
+
+loc$Edge = NA
+loc$Edge[which(loc$period == "1968-72")] = ifelse(loc$lat[which(loc$period == "1968-72")] %in% tail(sort(loc$lat[which(loc$period == "1968-72")]), 20), "Leading", 
+                                                  ifelse(loc$lat[which(loc$period == "1968-72")] %in% head(sort(loc$lat[which(loc$period == "1968-72")]), 20), "Rear", "Middle"))
+
+loc$Edge[which(loc$period == "2008-11")] = ifelse(loc$lat[which(loc$period == "2008-11")] %in% tail(sort(loc$lat[which(loc$period == "2008-11")]), 20), "Leading", 
+                                                  ifelse(loc$lat[which(loc$period == "2008-11")] %in% head(sort(loc$lat[which(loc$period == "2008-11")]), 20), "Rear", "Middle"))
+
+Southern.dist = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") + geom_point(data = loc, aes(x = long, y = lat, colour = period), size = 1.5, shape = 15) + 
+  stat_ellipse(data = loc[which(loc$Edge %in% c("Leading","Rear")),], aes(x = long, y = lat, colour = Edge, linetype = period), size = 2) +
+  geom_hline(yintercept = max(Loc10$lat), linetype="dashed", size = 2) + geom_hline(yintercept = min(BTO_distrib$lat), linetype="dashed", size = 2) + 
+  ggtitle("Southern species - Whole study ") + ylab("") + xlab("") + theme_classic(base_size =  23) + xlim(min(loc$long) - 1, max(Coord10$long)) + scale_colour_manual(values = c("black", "gray57","#CC6677","#88CCEE")) +
+  theme(legend.direction = "vertical", legend.box = "horizontal") +
+  theme(legend.position = "none")
+
+l1 = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") + geom_point(data = loc, aes(x = long, y = lat, colour = period), size = 1.5, shape = 15) +
+  scale_color_manual(name = "Time period",values = c("black", "gray57","#CC6677","#88CCEE")) + 
+  theme(legend.direction = "vertical", legend.box = "vertical", legend.text=element_text(size=15))
+leg1 <- get_legend(l1)
+
+l2 = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") +   
+  stat_ellipse(data = loc[which(loc$Edge %in% c("Leading","Rear")),], aes(x = long, y = lat, colour = Edge, linetype = period), size = 2) +
+  scale_color_manual(name = "Range edge",values = c("#CC6677","#88CCEE")) + 
+  theme(legend.direction = "vertical", legend.box = "vertical", legend.text=element_text(size=15)) 
+leg2 <- get_legend(l2)
+
+library(patchwork)
+blank_p <- plot_spacer() + theme_void()
+leg12 <- plot_grid(leg1,leg2,blank_p,ncol = 1)
+
+final_p.south <- plot_grid(Southern.dist,leg12, rel_widths = c(1,0.1))
+final_p.south
+
+# ggsave('plots/NS.DistChange.Gadwall46.jpeg', scale = 2.5, dpi = 500, bg= 'transparent')
+
+ggarrange(final_p.south, final_p, common.legend = T, widths = c(0.8,0.8))
+
+ggsave('plots/NS.DistChange.Mainland.WholeStudy.jpeg', width = 9, scale = 2.5, dpi = 500, bg= 'transparent')
+
 
 
 ### plots with no background
@@ -401,6 +482,9 @@ tb2$shift = relevel(tb2$shift, "rear edge shift")
 levels(tb2$shift)
 
 biogeo = tb2[which(tb2$covariate %in% c("scale.dist_N_km_max20_P.1.", "scale.dist_S_km_min20_P.1.", "scale.P.1.", "X.Intercept.")),]
+biogeo = biogeo[which(biogeo$shift!='Expansion'),]
+biogeo = biogeo[which(biogeo$covariate!='X.Intercept.'),]
+
 traits = tb2[which(!tb2$covariate %in% c("scale.dist_N_km_max20_P.1.", "scale.dist_S_km_min20_P.1.", "scale.P.1.", "X.Intercept.")),]
 traits_nodiff = traits[which(traits$shift!='Expansion'),]
 
@@ -428,55 +512,60 @@ tb.mainland2$shift = relevel(tb.mainland2$shift, "rear edge shift")
 levels(tb.mainland2$shift)
 
 biogeo.mainland = tb.mainland2[which(tb.mainland2$covariate %in% c("scale.dist_N_km_max20_P.1.", "scale.dist_S_km_min20_P.1.", "scale.P.1.", "X.Intercept.")),]
+biogeo.mainland = biogeo.mainland[which(biogeo.mainland$shift!='Expansion'),]
+biogeo.mainland = biogeo.mainland[which(biogeo.mainland$covariate!='X.Intercept.'),]
+
 traits.mainland = tb.mainland2[which(!tb.mainland2$covariate %in% c("scale.dist_N_km_max20_P.1.", "scale.dist_S_km_min20_P.1.", "scale.P.1.", "X.Intercept.")),]
 traits_nodiff.mainland = traits.mainland[which(traits.mainland$shift!='Expansion'),]
 
 
 ##################################
 ### BIOGEOGRAPHICAL COVARIATES
-biogeo$shift = relevel(biogeo$shift, "rear edge shift")
-biogeo$linesize = ifelse(biogeo$significance %in% c('','.'), 1, 1.5)
+biogeo.mainland$shift = factor(biogeo.mainland$shift, levels = c('rear edge shift', 'leading edge shift'))
+# levels(biogeo$shift) = c('rear edge shift', 'leading edge shift', 'expansion')
+biogeo.mainland$linesize = ifelse(biogeo.mainland$significance %in% c(''), 1, 1.5)
 
-g1 = ggplot(data = biogeo[which(biogeo$model == "northern"),], aes(x = estimate_mean, y = paste(covariate,shift), colour = shift, shape = model, label = significance)) + 
+labels.biogeo = c('','Northern boundary effect','','Southern boundary effect','','Range size','')
+
+g1 = ggplot(data = biogeo.mainland[which(biogeo.mainland$model == "northern"),], aes(x = estimate_mean, y = paste(covariate,shift), colour = shift, shape = model, label = significance)) + 
   geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0.5, vjust=0.2,show.legend=FALSE, size = 10) + 
   geom_errorbarh(aes(y = paste(covariate,shift), xmin = CI_lo, xmax = CI_up, size = linesize), height = .3) + 
-  xlim(min(biogeo[which(biogeo$model == "northern"),'CI_lo']),max(biogeo[which(biogeo$model == "northern"),'CI_up'])) + 
-  xlab("Estimate")+  ylab('') + ggtitle('Northern species - whole study') + 
-  scale_y_discrete(labels = c('','','Northern boundary effect','','','Southern boundary effect','','','Range size','','','Intercept','','')) + 
+  xlab("Estimate")+  ylab('') + ggtitle('a. Northern species - mainland') + xlim(min(biogeo.mainland$CI_lo), max(biogeo.mainland$CI_up)) +
+  scale_y_discrete(labels = labels.biogeo) + 
   scale_colour_manual(values= safe_colorblind_palette) + theme_bw(base_size = 25) + 
-  theme(axis.ticks = element_blank()) + geom_hline(yintercept = seq(3.5,9.5,3), colour = 'grey', linetype = 'longdash') + guides(size = 'none', shape = 'none')
+  theme(axis.ticks = element_blank()) + geom_hline(yintercept = seq(2.5,5.5,2), colour = 'grey', linetype = 'longdash') + guides(size = 'none', shape = 'none')
 
-g2 = ggplot(data = biogeo[which(biogeo$model == "southern"),], aes(x = estimate_mean, y = paste(covariate,shift), colour = shift, shape = model, label = significance)) + 
+g2 = ggplot(data = biogeo.mainland[which(biogeo.mainland$model == "southern"),], aes(x = estimate_mean, y = paste(covariate,shift), colour = shift, shape = model, label = significance)) + 
   geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0.5, vjust=0.2,show.legend=FALSE, size = 10) + 
   xlab("Estimate") + ylab('') +
   geom_errorbarh(aes(y = paste(covariate,shift), xmin = CI_lo, xmax = CI_up, size = linesize), height = .3) + 
-  xlim(min(biogeo[which(biogeo$model == "southern"),'CI_lo']),max(biogeo[which(biogeo$model == "southern"),'CI_up'])) + 
-  scale_y_discrete(labels = c('','','Northern boundary effect','','','Southern boundary effect','','','Range size','','','Intercept','','')) + 
-  ggtitle('Southern species - whole study')+ scale_colour_manual(values= safe_colorblind_palette) + theme_bw(base_size = 25) + 
-  theme(axis.ticks = element_blank())  + geom_hline(yintercept = seq(3.5,9.5,3), colour = 'grey', linetype = 'longdash')+ guides(size = 'none', shape = 'none')
+  scale_y_discrete(labels = labels.biogeo) + 
+  ggtitle('b. Southern species - mainland')+ scale_colour_manual(values= safe_colorblind_palette) + theme_bw(base_size = 25) + 
+  xlim(min(biogeo.mainland$CI_lo), max(biogeo.mainland$CI_up)) +
+  theme(axis.ticks = element_blank())  + geom_hline(yintercept = seq(2.5,5.5,2), colour = 'grey', linetype = 'longdash')+ guides(size = 'none', shape = 'none')
 
-g3 = ggplot(data = biogeo[which(biogeo$model == "Passeriformes"),], aes(x = estimate_mean, y = paste(covariate,shift), colour = shift, shape = model, label = significance)) + 
+g3 = ggplot(data = biogeo.mainland[which(biogeo.mainland$model == "Passeriformes"),], aes(x = estimate_mean, y = paste(covariate,shift), colour = shift, shape = model, label = significance)) + 
   geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0.5, vjust=0.2,show.legend=FALSE, size = 10) + 
   xlab("Estimate") +  ylab('') + geom_errorbarh(aes(y = paste(covariate,shift), xmin = CI_lo, xmax = CI_up, size = linesize), height = .3) + 
-  xlim(min(biogeo[which(biogeo$model == "Passeriformes"),'CI_lo']),max(biogeo[which(biogeo$model == "Passeriformes"),'CI_up'])) + 
-  scale_y_discrete(labels = c('','','Northern boundary effect','','','Southern boundary effect','','','Range size','','','Intercept','','')) + 
-  ggtitle('Passeriformes - whole study')+ scale_colour_manual(values= safe_colorblind_palette) + theme_bw(base_size = 25) + 
-  theme(axis.ticks = element_blank())  + geom_hline(yintercept = seq(3.5,9.5,3), colour = 'grey', linetype = 'longdash')+ guides(size = 'none', shape = 'none')
+  scale_y_discrete(labels = labels.biogeo) + 
+  ggtitle('c. Passeriformes - mainland')+ scale_colour_manual(values= safe_colorblind_palette) + theme_bw(base_size = 25) + 
+  xlim(min(biogeo.mainland$CI_lo), max(biogeo.mainland$CI_up)) +
+  theme(axis.ticks = element_blank(),axis.text.y = element_blank())  + geom_hline(yintercept = seq(2.5,5.5,2), colour = 'grey', linetype = 'longdash')+ guides(size = 'none', shape = 'none')
 
-g4 = ggplot(data = biogeo[which(biogeo$model == "terrestrial"),], aes(x = estimate_mean, y = paste(covariate,shift), colour = shift, shape = model, label = significance)) + 
+g4 = ggplot(data = biogeo.mainland[which(biogeo.mainland$model == "terrestrial"),], aes(x = estimate_mean, y = paste(covariate,shift), colour = shift, shape = model, label = significance)) + 
   geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0.5, vjust=0.2,show.legend=FALSE, size = 10) + 
   xlab("Estimate") +  ylab('') + geom_errorbarh(aes(y = paste(covariate,shift), xmin = CI_lo, xmax = CI_up, size = linesize), height = .3) + 
-  xlim(min(biogeo[which(biogeo$model == "terrestrial"),'CI_lo']),max(biogeo[which(biogeo$model == "terrestrial"),'CI_up'])) + 
-  scale_y_discrete(labels = c('','','Northern boundary effect','','','Southern boundary effect','','','Range size','','','Intercept','','')) + 
-  ggtitle('All species - whole study')+ scale_colour_manual(values= safe_colorblind_palette) + theme_bw(base_size = 25) + 
-  theme(axis.ticks = element_blank())  + geom_hline(yintercept = seq(3.5,9.5,3), colour = 'grey', linetype = 'longdash')+ guides(size = 'none', shape = 'none')
+  scale_y_discrete(labels = labels.biogeo) + 
+  ggtitle('d. All species - mainland')+ scale_colour_manual(values= safe_colorblind_palette) + theme_bw(base_size = 25) + 
+  xlim(min(biogeo.mainland$CI_lo), max(biogeo.mainland$CI_up)) +
+  theme(axis.ticks = element_blank(),axis.text.y = element_blank())  + geom_hline(yintercept = seq(2.5,5.5,2), colour = 'grey', linetype = 'longdash')+ guides(size = 'none', shape = 'none')
 
 library(ggpubr)
 ## Figure S2 - Estimates from GLMM 
-ggarrange(g1,g2,g3,g4)
+ggarrange(g1,g3,g2,g4, common.legend = T, widths = c(1.4,1))
 
 library(cowplot)
-ggsave2('plots/ModelEstimates_Biogeo.WholeStudy.jpeg', scale = 3)
+ggsave2('plots/ModelEstimates_Biogeo.Mainland.jpeg', scale = 2.5, dpi = 500, width = 8)
 
 ### SPECIES TRAITS
 labels = c('','Association with forest/grassland','','','Association with urban area/cropland','','','Diet diversity','','','Habitat generality','','','Log 10 body mass','','','Migratory status - Migrant','','','Normalised number of prey','','','Number of predators','','','Precipitation seasonality','','','Temperature seasonality','','','Trophic position','')
