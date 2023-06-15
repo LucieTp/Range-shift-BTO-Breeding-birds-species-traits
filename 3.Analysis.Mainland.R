@@ -272,22 +272,23 @@ pglmm_shift = function(dta_list, mod){
       
       names.all = names(coef.all)
       
-      names = names.all[which(pvalue<=0.1)]
+      names = names.all
       
       if("(Intercept)" %in% names){names = names[-1]}
       if("migratory_binomialMigrant" %in% names){names = names[-which(names == "migratory_binomialMigrant")]}
       
-      # par(mfrow = c(3,2))
-      # 
-      # if(length(names)>0){
-      #   for(co in 1:length(names)){          
-      #     print(names[co])
-      #     jpeg(paste0('E:/TheseSwansea/TraitStudy/Github/plots/mcPlots.LinearModels.',mod[model],'.',shift,'.',names[co],".jpg"), width = 800, height = 600, quality = 1000)
-      #     car::mcPlot(mod.p, variable = names[co], overlaid = F, col.marginal='black', col.conditional= 'green4', title = F, new = F)
-      #     # The second conditional plot is the added-variable plot of e(Y|Z) versus e(X|Z) where e(a|b) means the Pearson residuals from the regression of a on b.
-      #     dev.off()
-      #   }
-      # }
+      par(mfrow = c(3,2))
+
+      if(length(names)>0){
+        for(co in 1:length(names)){
+          print(names[co])
+          jpeg(paste0('E:/TheseSwansea/TraitStudy/Github/plots/visreg/LinearModels.',mod[model],'.',shift,'.',names[co],".jpg"), width = 400, height = 400, quality = 1000)
+          visreg::visreg(mod.p, regmatches(names[co], gregexpr("(?<=\\().*?(?=\\))", names[co], perl=T))[[1]])
+          # car::mcPlot(mod.p, variable = names[co], overlaid = F, ellipse=T, col.marginal='black', col.conditional= 'green4', title = F, new = F)
+          # The second conditional plot is the added-variable plot of e(Y|Z) versus e(X|Z) where e(a|b) means the Pearson residuals from the regression of a on b.
+          dev.off()
+        }
+      }
     }
   }
   return(all_dta)

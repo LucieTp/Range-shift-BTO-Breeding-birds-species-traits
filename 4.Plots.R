@@ -1,6 +1,9 @@
 ################################################################################
-### CODE FOR PLOTTING THE MAIN FIGURE, TABLE AND SUPP FIG 1 AND 2
+### CODE FOR PLOTTING THE MAIN FIGURE, GENERATE THE TABLES AND SUPP FIGURES
 ################################################################################
+
+
+
 
 
 ################################################################################
@@ -15,11 +18,14 @@ library(tidyr)
 library(stargazer)
 library(stringr)
 
+setwd("E:/TheseSwansea/TraitStudy/Github")
+
 sf_UK  <- ne_countries(scale = "medium", country = 'United Kingdom', returnclass = "sf")
 
 ## Main table with all the species traits, range shift etc
-setwd("E:/TheseSwansea/TraitStudy/Github")
+# for the whole study area
 species_traits <- read.csv('data/SpecTrait_Full_062023_159sp.csv', stringsAsFactors = FALSE, row.names = 1)
+# for the mainland
 species_traits.mainland <- read.csv('data/SpecTrait_Full_062023_156sp.csv', stringsAsFactors = FALSE, row.names = 1)
 
 # Marine or non marine species : (Marine = >75% of points within 20km of the coastline)
@@ -27,25 +33,29 @@ propmarine <- read.csv('data/Speciestraits_ProportionMarineBTOsp_159sp.csv', str
 species_traits = merge(species_traits, propmarine[,c('speccode','prop_Marine20km')])
 species_traits$Marine = ifelse(species_traits$prop_Marine20km>75, 1, 0)
 
+# remove marine species
 species_traits = subset(species_traits, Marine == 0)
+# remove Pintail and Corvus cornix 
 species_traits = subset(species_traits, !speccode %in% c(71,910))
 
+# subset the mainland study too
 species_traits.mainland = subset(species_traits.mainland, speccode %in% species_traits$speccode)
+
+# we used the distribution core relative to middle of the mainland not the whole study to classify sp
+# as Northern or Southern:
+species_traits = merge(species_traits[,-which(names(species_traits) == 'distrib.core')], species_traits.mainland[,c('speccode','distrib.core')], by = 'speccode', all.x = T) # keep distribution core from the mainland study to compare results
 
 species_traits$log10BodyMass.Value = log10(species_traits$BodyMass.Value)
 species_traits$shift_diff = (species_traits$shift_max20_P.1.3_dist_km - species_traits$shift_min20_P.1.3_dist_km)
-# we used the distribution core relative to middle of the mainland not the whole study to classify sp
-# as Northern or Southern
-species_traits = merge(species_traits[,-which(names(species_traits) == 'distrib.core')], species_traits.mainland[,c('speccode','distrib.core')], by = 'speccode', all.x = T) # keep distribution core from the mainland study to compare results
 
 species_traits.mainland$log10BodyMass.Value = log10(species_traits.mainland$BodyMass.Value)
 species_traits.mainland$shift_diff = (species_traits.mainland$shift_max20_P.1.3_dist_km - species_traits.mainland$shift_min20_P.1.3_dist_km)
 
 
+################################################################################
 ## BTO Data (occurrence data per grid cell for all of UK) - used for distribution maps
 BTO_grid <- read.csv("data/grid_square_coordinates_lookup.csv", header=T)
 BTO_distrib <- read.csv("data/distributions.csv", header=T) # period, sp code, season and grid for GB and Ireland
-
 
 # Mean coordinates of each grid cell
 Coord10 <- as_tibble(BTO_grid) %>%
@@ -75,6 +85,11 @@ BTO_distrib = merge(Loc10, BTO_distrib, all.y = T)
 BTO_distrib = subset(BTO_distrib, speccode %in% species_traits$speccode)
 BTO_distrib = subset(BTO_distrib, period %in% c("1968-72","2008-11"))
 
+BTO_distrib.mainland = subset(BTO_distrib, lat < 58.7)
+
+
+
+################################################################################
 ### Correlation between variables
 
 library(corrplot)
@@ -102,24 +117,24 @@ corrplot(M, type="upper", order="hclust")
 # >> if the latitude is significantly higher in P3 than P1, then we conclude that 
 # the species shifted significantly northward etc 
 
-BTO_distrib$Edge = NA
+BTO_distrib.mainland$Edge = NA
 stable.leading = stable.rear = poleward.leading = poleward.rear = southward.rear = southward.leading = NULL
 for (i in unique(species_traits$speccode)){
-  for (p in unique(BTO_distrib$periodN)){
+  for (p in unique(BTO_distrib.mainland$periodN)){
     
-    loc = BTO_distrib[which(BTO_distrib$speccode == i & BTO_distrib$periodN == p),]
+    loc = BTO_distrib.mainland[which(BTO_distrib.mainland$speccode == i & BTO_distrib.mainland$periodN == p),]
     edge = ifelse(loc$lat %in% tail(sort(loc$lat), 20), "Leading", ifelse(loc$lat %in% head(sort(loc$lat), 20), "Rear", "Middle"))
 
-    BTO_distrib[which(BTO_distrib$speccode == i & BTO_distrib$periodN == p),'Edge'] = edge
+    BTO_distrib.mainland[which(BTO_distrib.mainland$speccode == i & BTO_distrib.mainland$periodN == p),'Edge'] = edge
   }
   
   ## leading edge
   
-  test = wilcox.test(lat ~ periodN, data = BTO_distrib[which(BTO_distrib$speccode == i & BTO_distrib$Edge == 'Leading' & BTO_distrib$periodN %in% c('P.1','P.3') ),], alternative = 'less', paired = F)
+  test = wilcox.test(lat ~ periodN, data = BTO_distrib.mainland[which(BTO_distrib.mainland$speccode == i & BTO_distrib.mainland$Edge == 'Leading' & BTO_distrib.mainland$periodN %in% c('P.1','P.3') ),], alternative = 'less', paired = F)
   if(test$p.value < 0.05 ){
       poleward.leading = c(poleward.leading, i)
     } else {
-        test = wilcox.test(lat ~ periodN, data = BTO_distrib[which(BTO_distrib$speccode == i & BTO_distrib$Edge == 'Leading' & BTO_distrib$periodN %in% c('P.1','P.3') ),], alternative = 'greater', paired = F)
+        test = wilcox.test(lat ~ periodN, data = BTO_distrib.mainland[which(BTO_distrib.mainland$speccode == i & BTO_distrib.mainland$Edge == 'Leading' & BTO_distrib.mainland$periodN %in% c('P.1','P.3') ),], alternative = 'greater', paired = F)
         if(test$p.value < 0.05 ){
           southward.leading = c(southward.leading, i)
         } 
@@ -129,12 +144,12 @@ for (i in unique(species_traits$speccode)){
     }
     
     ## rear edge
-    test1 = wilcox.test(lat ~ periodN, data = BTO_distrib[which(BTO_distrib$speccode == i & BTO_distrib$Edge == 'Rear' & BTO_distrib$periodN %in% c('P.1','P.3') ),], alternative = 'less', paired = F)
+    test1 = wilcox.test(lat ~ periodN, data = BTO_distrib.mainland[which(BTO_distrib.mainland$speccode == i & BTO_distrib.mainland$Edge == 'Rear' & BTO_distrib.mainland$periodN %in% c('P.1','P.3') ),], alternative = 'less', paired = F)
     
     if(test1$p.value < 0.05 ){
       poleward.rear = c(poleward.rear, i)
     } else {
-      test1 = wilcox.test(lat ~ periodN, data = BTO_distrib[which(BTO_distrib$speccode == i & BTO_distrib$Edge == 'Rear' & BTO_distrib$periodN %in% c('P.1','P.3') ),], alternative = 'greater', paired = F)
+      test1 = wilcox.test(lat ~ periodN, data = BTO_distrib.mainland[which(BTO_distrib.mainland$speccode == i & BTO_distrib.mainland$Edge == 'Rear' & BTO_distrib.mainland$periodN %in% c('P.1','P.3') ),], alternative = 'greater', paired = F)
       if(test1$p.value < 0.05 ){
         southward.rear = c(southward.rear, i)
       } 
@@ -165,9 +180,9 @@ edge = stable.rear
 print(paste(length(edge)/159, 'of species shifted did not shift their rear edge significantly'))
 
 ### t test are not appropriate given our data
-t.test(lat ~ periodN, data = BTO_distrib[which(BTO_distrib$speccode == i & BTO_distrib$Edge == 'Leading' & BTO_distrib$periodN %in% c('P.1','P.3') ),])
+t.test(lat ~ periodN, data = BTO_distrib.mainland[which(BTO_distrib.mainland$speccode == i & BTO_distrib.mainland$Edge == 'Leading' & BTO_distrib.mainland$periodN %in% c('P.1','P.3') ),])
 
-bartlett.test(lat ~ periodN, data = BTO_distrib[which(BTO_distrib$speccode == i & BTO_distrib$Edge == 'Leading' & BTO_distrib$periodN %in% c('P.1','P.3') ),])
+bartlett.test(lat ~ periodN, data = BTO_distrib.mainland[which(BTO_distrib.mainland$speccode == i & BTO_distrib.mainland$Edge == 'Leading' & BTO_distrib.mainland$periodN %in% c('P.1','P.3') ),])
 shapiro.test(x$shift[which(x$edge == 'min')])
 
 ## Difference in shift between N and S species
@@ -231,110 +246,27 @@ towrite[,c(4:5,8:30)] = round(towrite[,c(4:5,8:30)], 2)
 write.csv(towrite, 'SpeciesTraitsTableS1_paper.WholeStudy.Mainland.csv')
 
 
-################################################################################
-### Outputs of PGLMMs in a nicer format
-
-
-tb = read.csv2("results/pglmm_scaled_terrestrialNS_PCs_Std.Error.R2.WholeStudy.HWI.csv", sep =",", dec = ".")
-tb_km = read.csv2("results/pglmm_scaled_terrestrialNS_PCs_Std.Error.R2.WholeStudy.HWI.km.csv", sep =",", dec = ".")
-
-
-tb.mainland = read.csv2("results/pglmm_scaled_terrestrialNS_PCs_Std.Error.R2.Mainland_136sp.HWI.csv", sep =",", dec = ".")
-
-## comparing estimates for the mainland and whole study
-
-mean(abs(apply(subset(tb, value == 'estimate_mean' & shift == 'max')[c(9:11,13:22)], 2, as.numeric)))
-sd(apply(subset(tb, value == 'estimate_mean' & shift == 'max')[c(9:11,13:22)], 2, as.numeric))
-
-mean(abs(apply(subset(tb.mainland, value == 'estimate_mean' & shift == 'max')[c(9:11,13:22)], 2, as.numeric)))
-sd(abs(apply(subset(tb.mainland, value == 'estimate_mean' & shift == 'max')[c(9:11,13:22)], 2, as.numeric)))
-
-hist(abs(apply(subset(tb, value == 'estimate_mean' & shift == 'max')[c(9:11,13:22)], 2, as.numeric)))
-hist(abs(apply(subset(tb.mainland, value == 'estimate_mean' & shift == 'max')[c(9:11,13:22)], 2, as.numeric)))
-
-wilcox.test(abs(apply(subset(tb, value == 'estimate_mean' & shift == 'max')[c(9:11,13:22)], 2, as.numeric)),
-            abs(apply(subset(tb.mainland, value == 'estimate_mean' & shift == 'max')[c(9:11,13:22)], 2, as.numeric)), paired = T)
-
-################################################################################
-## TABLE 1             #########################################################
-################################################################################
-
-
-tb1 = pivot_wider(tb.mainland[which(tb.mainland$value %in% c("significance","estimate_mean")),-1], values_from = names(tb.mainland)[8:22], names_from = value)
-# tb1 = tb1[-which(str_detect(tb1$model, "Non passeriformes")),]
-tb1$shift = ifelse(tb1$shift == "max", "leading edge shift",ifelse(tb1$shift == "min","rear edge shift", "Expansion/Retraction"))
-tb1 = tb1[,-which(str_detect(colnames(tb1),"Loglik|phylo.mean"))]
-tb1[,c("r2.phylo","p.value.phylo", "R2.rr2", str_subset(names(tb1), 'estimate'))] = apply(tb1[,c("r2.phylo","p.value.phylo", "R2.rr2", str_subset(names(tb1), 'estimate'))], 2, as.numeric)
-tb1[,c("r2.phylo","p.value.phylo", "R2.rr2", str_subset(names(tb1), 'estimate'))] = round(tb1[,c("r2.phylo","p.value.phylo", "R2.rr2", str_subset(names(tb1), 'estimate'))],2)
-
-
-test = tb1
-test[,c(7:36)] = apply(test[,c(7:36)], 2, as.character)
-test[is.na(test)] = ''
-for(i in seq(7,36,2)) {test[,i] = apply(test[,c(i, i+1)], 1, function(x) paste(x[1], x[2]))}
-test = test[,-str_which(names(test), 'significance')]
-
-stargazer(test, summary = F, type = "html")
-
-################################################################################
-## TABLE S3
-## same with coef in km
-################################################################################
-
-tb1 = pivot_wider(tb_km[which(tb_km$value %in% c("significance","estimate_mean")),-1], values_from = names(tb_km)[8:22], names_from = value)
-# tb1 = tb1[-which(str_detect(tb1$model, "Non passeriformes")),]
-tb1$shift = ifelse(tb1$shift == "max", "leading edge shift",ifelse(tb1$shift == "min","rear edge shift", "Expansion/Retraction"))
-tb1 = tb1[,-which(str_detect(colnames(tb1),"Loglik|phylo.mean"))]
-tb1[,c("r2.phylo","p.value.phylo", "R2.rr2", str_subset(names(tb1), 'estimate'))] = apply(tb1[,c("r2.phylo","p.value.phylo", "R2.rr2", str_subset(names(tb1), 'estimate'))], 2, as.numeric)
-tb1[,c("r2.phylo","p.value.phylo", "R2.rr2", str_subset(names(tb1), 'estimate'))] = round(tb1[,c("r2.phylo","p.value.phylo", "R2.rr2", str_subset(names(tb1), 'estimate'))],2)
-
-
-test = tb1
-test[,c(7:36)] = apply(test[,c(7:36)], 2, as.character)
-test[is.na(test)] = ''
-for(i in seq(7,36,2)) {test[,i] = apply(test[,c(i, i+1)], 1, function(x) paste(x[1], x[2]))}
-test = test[,-str_which(names(test), 'significance')]
-
-stargazer(test, summary = F, type = "html")
-
-################################################################################
-## TABLE S4
-## table of results without Orkney and the Shetlands
-################################################################################
-
-tb2 = read.csv('E:/TheseSwansea/TraitStudy/Github/Range-shift-BTO-breeding-birds/results/pglmm_scaled_terrestrialNS_PCs_Std.Error.R2.NoShetlandsNoOrkney.csv')
-
-tb2 = pivot_wider(tb2[which(tb2$value %in% c("significance","estimate_mean")),-1], values_from = names(tb2)[8:22], names_from = value)
-tb2 = tb2[-which(str_detect(tb2$model, "Non passeriformes")),]
-tb2$shift = ifelse(tb2$shift == "max", "leading edge shift",ifelse(tb2$shift == "min","rear edge shift", "Expansion/Retraction"))
-tb2 = tb2[,-which(str_detect(colnames(tb2),"Loglik|phylo.mean"))]
-tb2[,c("r2.phylo","p.value.phylo", "R2.rr2", str_subset(names(tb2), 'estimate'))] = apply(tb2[,c("r2.phylo","p.value.phylo", "R2.rr2", str_subset(names(tb2), 'estimate'))], 2, as.numeric)
-tb2[,c("r2.phylo","p.value.phylo", "R2.rr2", str_subset(names(tb2), 'estimate'))] = round(tb2[,c("r2.phylo","p.value.phylo", "R2.rr2", str_subset(names(tb2), 'estimate'))],2)
-
-
-tb2[,c(7:36)] = apply(tb2[,c(7:36)], 2, as.character)
-tb2[is.na(tb2)] = ''
-for(i in seq(7,36,2)) {tb2[,i] = apply(tb2[,c(i, i+1)], 1, function(x) paste(x[1], x[2]))}
-tb2 = tb2[,-str_which(names(tb2), 'significance')]
-
-stargazer(tb2, summary = F, type = "html")
-
-
 #################################################################################
-## FIG 1 and Fig S2 #############################################################
+## FIG 1  #######################################################################
 #################################################################################
 safe_colorblind_palette <- c("#88CCEE", "#CC6677", "#DDCC77", "#117733", "#332288", "#AA4499", 
                              "#44AA99", "#999933", "#882255", "#661100", "#6699CC", "#888888")
 scales::show_col(safe_colorblind_palette)
 
+################################################################################
+### plots for the whole study area:
+
+# NORTHERN SPECIES
 loc = merge(Loc10, BTO_distrib[which(BTO_distrib$speccode == 95),])
 loc$Edge = NA
+## create 'Edge' column that classifies the occurrence data into leading or rear edge
 loc$Edge[which(loc$period == "1968-72")] = ifelse(loc$lat[which(loc$period == "1968-72")] %in% tail(sort(loc$lat[which(loc$period == "1968-72")]), 20), "Leading", 
                                                   ifelse(loc$lat[which(loc$period == "1968-72")] %in% head(sort(loc$lat[which(loc$period == "1968-72")]), 20), "Rear", "Middle"))
 
 loc$Edge[which(loc$period == "2008-11")] = ifelse(loc$lat[which(loc$period == "2008-11")] %in% tail(sort(loc$lat[which(loc$period == "2008-11")]), 20), "Leading", 
                                                   ifelse(loc$lat[which(loc$period == "2008-11")] %in% head(sort(loc$lat[which(loc$period == "2008-11")]), 20), "Rear", "Middle"))
 
+## create main plot without legend (we will create legend below to have seperate legends for each element)
 Northern.dist = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") + geom_point(data = loc, aes(x = long, y = lat, colour = period), size = 1.5, shape = 15) +
   stat_ellipse(data = loc[which(loc$Edge %in% c("Leading","Rear")),], aes(x = long, y = lat, colour = Edge, linetype = period), size = 2) +
   geom_hline(yintercept = min(BTO_distrib$lat), linetype="dashed", size = 2) + geom_hline(yintercept = max(Loc10$lat), linetype="dashed", size = 2) + scale_colour_manual(values = c("black", "gray57","#CC6677","#88CCEE")) +
@@ -342,17 +274,20 @@ Northern.dist = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") + geom_poin
   theme(legend.direction = "vertical", legend.box = "horizontal") +
   theme(legend.position = "none")
 
+## subplots to get legend for grid cell colour
 l1 = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") + geom_point(data = loc, aes(x = long, y = lat, colour = period), size = 1.5, shape = 15) +
   scale_color_manual(name = "Time period",values = c("black", "gray57","#CC6677","#88CCEE")) + 
   theme(legend.direction = "vertical", legend.box = "vertical", legend.text=element_text(size=15))
 leg1 <- get_legend(l1)
 
+## subplots to get legend for ellipses
 l2 = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") +   
   stat_ellipse(data = loc[which(loc$Edge %in% c("Leading","Rear")),], aes(x = long, y = lat, colour = Edge, linetype = period), size = 2) +
   scale_color_manual(name = "Range edge",values = c("#CC6677","#88CCEE")) + 
   theme(legend.direction = "vertical", legend.box = "vertical", legend.text=element_text(size=15)) 
 leg2 <- get_legend(l2)
 
+## putting everything together into one plot
 library(patchwork)
 blank_p <- plot_spacer() + theme_void()
 leg12 <- plot_grid(leg1,leg2,blank_p,ncol = 1)
@@ -360,10 +295,9 @@ leg12 <- plot_grid(leg1,leg2,blank_p,ncol = 1)
 final_p <- plot_grid(Northern.dist,leg12, rel_widths = c(1,0.1))
 final_p 
 
-# ggsave('plots/NorthernDist.Mainland.MainPlots.Dchange.jpeg', Northern.dist, scale = 2, dpi = 500, bg= 'transparent')
-
+# SOUTHERN SPECIES
 loc = merge(Loc10, BTO_distrib[which(BTO_distrib$speccode == 272),])
-# loc = merge(Loc10, BTO_distrib[which(BTO_distrib$speccode == 66),]) # 46, 66
+# loc = merge(Loc10, BTO_distrib[which(BTO_distrib$speccode == 66),]) # 46, 66 for species in supplementary
 
 loc$Edge = NA
 loc$Edge[which(loc$period == "1968-72")] = ifelse(loc$lat[which(loc$period == "1968-72")] %in% tail(sort(loc$lat[which(loc$period == "1968-72")]), 20), "Leading", 
@@ -400,12 +334,89 @@ final_p.south
 # ggsave('plots/NS.DistChange.Gadwall46.jpeg', scale = 2.5, dpi = 500, bg= 'transparent')
 
 ggarrange(final_p.south, final_p, common.legend = T, widths = c(0.8,0.8))
-
-ggsave('plots/NS.DistChange.Mainland.WholeStudy.jpeg', width = 9, scale = 2.5, dpi = 500, bg= 'transparent')
-
+ggsave('plots/NS.DistChange.WholeStudy.jpeg', width = 9, scale = 2.5, dpi = 500, bg= 'transparent')
 
 
-### plots with no background
+################################################################################
+### for the mainland study
+
+loc = merge(Loc10, BTO_distrib.mainland[which(BTO_distrib.mainland$speccode == 95),])
+loc$Edge[which(loc$period == "1968-72")] = ifelse(loc$lat[which(loc$period == "1968-72")] %in% tail(sort(loc$lat[which(loc$period == "1968-72")]), 20), "Leading", 
+                                                  ifelse(loc$lat[which(loc$period == "1968-72")] %in% head(sort(loc$lat[which(loc$period == "1968-72")]), 20), "Rear", "Middle"))
+
+loc$Edge[which(loc$period == "2008-11")] = ifelse(loc$lat[which(loc$period == "2008-11")] %in% tail(sort(loc$lat[which(loc$period == "2008-11")]), 20), "Leading", 
+                                                  ifelse(loc$lat[which(loc$period == "2008-11")] %in% head(sort(loc$lat[which(loc$period == "2008-11")]), 20), "Rear", "Middle"))
+
+Northern.dist = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") + geom_point(data = loc, aes(x = long, y = lat, colour = period), size = 2, shape = 15) +
+  stat_ellipse(data = loc[which(loc$Edge %in% c("Leading","Rear")),], aes(x = long, y = lat, colour = Edge, linetype = period), size = 2) +
+  geom_hline(yintercept = min(BTO_distrib.mainland$lat), linetype="dashed", size = 2) + geom_hline(yintercept = 58.7, linetype="dashed", size = 2) + scale_colour_manual(values = c("black", "gray57","#CC6677","#88CCEE")) +
+  ggtitle("Northern species - Mainland") + ylab("") + xlab("") + theme_classic(base_size =  25) + xlim(min(loc$long) - 1, max(Coord10$long)) +
+  theme(legend.direction = "vertical", legend.box = "horizontal") +
+  theme(legend.position = "none")
+
+l1 = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") + geom_point(data = loc, aes(x = long, y = lat, colour = period), size = 2, shape = 15) +
+  scale_color_manual(name = "Time period",values = c("black", "gray57","#CC6677","#88CCEE")) + 
+  theme(legend.direction = "vertical", legend.box = "vertical", legend.text=element_text(size=20))
+leg1 <- get_legend(l1)
+
+l2 = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") +   
+  stat_ellipse(data = loc[which(loc$Edge %in% c("Leading","Rear")),], aes(x = long, y = lat, colour = Edge, linetype = period), size = 2) +
+  scale_color_manual(name = "Range edge",values = c("#CC6677","#88CCEE")) + 
+  theme(legend.direction = "vertical", legend.box = "vertical", legend.text=element_text(size=20)) 
+leg2 <- get_legend(l2)
+
+library(patchwork)
+blank_p <- plot_spacer() + theme_void()
+leg12 <- plot_grid(leg1,leg2,blank_p,ncol = 1)
+
+final_p <- plot_grid(Northern.dist,leg12, rel_widths = c(1,0.1))
+final_p 
+
+# ggsave('plots/NorthernDist.Mainland.MainPlots.Dchange.jpeg', Northern.dist, scale = 2, dpi = 500, bg= 'transparent')
+
+loc = merge(Loc10, BTO_distrib.mainland[which(BTO_distrib.mainland$speccode == 272),])
+loc$Edge[which(loc$period == "1968-72")] = ifelse(loc$lat[which(loc$period == "1968-72")] %in% tail(sort(loc$lat[which(loc$period == "1968-72")]), 20), "Leading", 
+                                                  ifelse(loc$lat[which(loc$period == "1968-72")] %in% head(sort(loc$lat[which(loc$period == "1968-72")]), 20), "Rear", "Middle"))
+
+loc$Edge[which(loc$period == "2008-11")] = ifelse(loc$lat[which(loc$period == "2008-11")] %in% tail(sort(loc$lat[which(loc$period == "2008-11")]), 20), "Leading", 
+                                                  ifelse(loc$lat[which(loc$period == "2008-11")] %in% head(sort(loc$lat[which(loc$period == "2008-11")]), 20), "Rear", "Middle"))
+
+Southern.dist = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") + geom_point(data = loc, aes(x = long, y = lat, colour = period), size = 2, shape = 15) + 
+  stat_ellipse(data = loc[which(loc$Edge %in% c("Leading","Rear")),], aes(x = long, y = lat, colour = Edge, linetype = period), size = 2) +
+  geom_hline(yintercept = max(BTO_distrib.mainland$lat), linetype="dashed", size = 2) + geom_hline(yintercept = min(BTO_distrib.mainland$lat), linetype="dashed", size = 2) + 
+  ggtitle("Southern species - Mainland") + ylab("") + xlab("") + theme_classic(base_size =  25) + xlim(min(loc$long) - 1, max(Coord10$long)) + scale_colour_manual(values = c("black", "gray57","#CC6677","#88CCEE")) +
+  theme(legend.direction = "vertical", legend.box = "horizontal") +
+  theme(legend.position = "none")
+
+l1 = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") + geom_point(data = loc, aes(x = long, y = lat, colour = period), size = 2, shape = 15) +
+  scale_color_manual(name = "Time period",values = c("black", "gray57","#CC6677","#88CCEE")) + 
+  theme(legend.direction = "vertical", legend.box = "vertical", legend.text=element_text(size=20))
+leg1 <- get_legend(l1)
+
+l2 = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") +   
+  stat_ellipse(data = loc[which(loc$Edge %in% c("Leading","Rear")),], aes(x = long, y = lat, colour = Edge, linetype = period), size = 2) +
+  scale_color_manual(name = "Range edge",values = c("#CC6677","#88CCEE")) + 
+  theme(legend.direction = "vertical", legend.box = "vertical", legend.text=element_text(size=20)) 
+leg2 <- get_legend(l2)
+
+library(patchwork)
+blank_p <- plot_spacer() + theme_void()
+leg12 <- plot_grid(leg1,leg2,blank_p,ncol = 1)
+
+final_p.south <- plot_grid(Southern.dist,leg12, rel_widths = c(1,0.1))
+final_p.south
+
+ggarrange(final_p.south, final_p, common.legend = T, widths = c(0.8,0.8))
+
+ggsave('plots/NS.DistChange.Mainland.jpeg', width = 9, scale = 2.5, dpi = 500, bg= 'transparent')
+
+
+################################################################################
+### for small png plots with no background in Figure 3 and supp
+################################################################################
+
+##################
+## Whole study:
 loc = merge(Loc10, BTO_distrib[which(BTO_distrib$speccode == 95 & BTO_distrib$periodN == "P.1"),])
 loc$Edge = ifelse(loc$lat %in% tail(sort(loc$lat), 20), "Leading", ifelse(loc$lat %in% head(sort(loc$lat), 20), "Rear", "Middle"))
 
@@ -453,18 +464,169 @@ Southern.dist = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") + geom_poin
 
 ggsave('plots/SouthernDist.WholeStudy.png', Southern.dist, scale = 1, dpi = 300, bg= 'transparent')
 
+##################
+## Mainland study
+
+loc = merge(Loc10, BTO_distrib.mainland[which(BTO_distrib.mainland$speccode == 95 & BTO_distrib.mainland$periodN == "P.1"),])
+loc$Edge = ifelse(loc$lat %in% tail(sort(loc$lat), 20), "Leading", ifelse(loc$lat %in% head(sort(loc$lat), 20), "Rear", "Middle"))
+
+Northern.dist = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") + geom_point(data = loc, aes(x = long, y = lat), size = 2, shape = 15) + 
+  stat_ellipse(data = loc[which(loc$Edge %in% c("Leading","Rear")),], aes(x = long, y = lat, colour = Edge), size = 2) + 
+  geom_hline(yintercept = max(BTO_distrib.mainland$lat), linetype="dashed", size = 2) + geom_hline(yintercept = min(BTO_distrib.mainland$lat), linetype="dashed", size = 2) + 
+  ggtitle("Northern species") + ylab("") + xlab("") + theme_classic(base_size =  33) + xlim(min(loc$long) - 1, max(Coord10$long)) +
+  guides(colour = 'none') +
+  theme(
+    axis.text.x=element_blank(), #remove x axis labels
+    axis.ticks.x=element_blank(), #remove x axis ticks
+    axis.text.y=element_blank(),  #remove y axis labels
+    axis.ticks.y=element_blank(),
+    panel.background = element_rect(fill='transparent'), #transparent panel bg
+    plot.background = element_rect(fill='transparent', color=NA), #transparent plot bg
+    panel.grid.major = element_blank(), #remove major gridlines
+    panel.grid.minor = element_blank(), #remove minor gridlines
+    legend.background = element_rect(fill='transparent'), #transparent legend bg
+    legend.box.background = element_rect(fill='transparent') #transparent legend panel
+  )
+
+ggsave('plots/NorthernDist.Mainland.png', Northern.dist, scale = 1, dpi = 300, bg= 'transparent')
+
+loc = merge(Loc10, BTO_distrib.mainland[which(BTO_distrib.mainland$speccode == 272 & BTO_distrib.mainland$periodN == "P.1"),])
+loc$Edge = ifelse(loc$lat %in% tail(sort(loc$lat), 20), "Leading", ifelse(loc$lat %in% head(sort(loc$lat), 20), "Rear", "Middle"))
+
+Southern.dist = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") + geom_point(data = loc, aes(x = long, y = lat), size = 2, shape = 15) + 
+  stat_ellipse(data = loc[which(loc$Edge %in% c("Leading","Rear")),], aes(x = long, y = lat, colour = Edge), size = 2) + 
+  geom_hline(yintercept = max(BTO_distrib.mainland$lat), linetype="dashed", size = 2) + geom_hline(yintercept = min(BTO_distrib.mainland$lat), linetype="dashed", size = 2) + 
+  ggtitle("Southern species") + ylab("") + xlab("") + theme_classic(base_size =  33) + xlim(min(loc$long) - 1, max(loc$long)) +
+  guides(colour = 'none') +
+  theme(
+    axis.text.x=element_blank(), #remove x axis labels
+    axis.ticks.x=element_blank(), #remove x axis ticks
+    axis.text.y=element_blank(),  #remove y axis labels
+    axis.ticks.y=element_blank(),
+    panel.background = element_rect(fill='transparent'), #transparent panel bg
+    plot.background = element_rect(fill='transparent', color=NA), #transparent plot bg
+    panel.grid.major = element_blank(), #remove major gridlines
+    panel.grid.minor = element_blank(), #remove minor gridlines
+    legend.background = element_rect(fill='transparent'), #transparent legend bg
+    legend.box.background = element_rect(fill='transparent') #transparent legend panel
+  )
+
+ggsave('plots/SouthernDist.Mainland.png', Southern.dist, scale = 1, dpi = 300, bg= 'transparent')
+
 
 
 ################################################################################
-### model results
-############################
+### model results 
+################################################################################
+
+################################################################################
+### Outputs of PGLMMs in a nicer format
+
+tb = read.csv2("results/pglmm_scaled_terrestrialNS_PCs_Std.Error.R2.WholeStudy.HWI.csv", sep =",", dec = ".")
+tb_km = read.csv2("results/pglmm_scaled_terrestrialNS_PCs_Std.Error.R2.WholeStudy.HWI.km.csv", sep =",", dec = ".")
+
+tb.mainland = read.csv2("results/pglmm_scaled_terrestrialNS_PCs_Std.Error.R2.Mainland_136sp.HWI.csv", sep =",", dec = ".")
+tb_km.mainland = read.csv2("results/pglmm_scaled_terrestrialNS_PCs_Std.Error.R2.Mainland.HWI.km.csv", sep =",", dec = ".")
+
+## comparing effect sizes of sp traits on leading edge shift for the mainland and whole study
+
+mean(abs(apply(subset(tb, value == 'estimate_mean' & shift == 'max')[c(9:11,13:22)], 2, as.numeric)))
+sd(apply(subset(tb, value == 'estimate_mean' & shift == 'max')[c(9:11,13:22)], 2, as.numeric))
+
+mean(abs(apply(subset(tb.mainland, value == 'estimate_mean' & shift == 'max')[c(9:11,13:22)], 2, as.numeric)))
+sd(abs(apply(subset(tb.mainland, value == 'estimate_mean' & shift == 'max')[c(9:11,13:22)], 2, as.numeric)))
+
+hist(abs(apply(subset(tb, value == 'estimate_mean' & shift == 'max')[c(9:11,13:22)], 2, as.numeric)))
+hist(abs(apply(subset(tb.mainland, value == 'estimate_mean' & shift == 'max')[c(9:11,13:22)], 2, as.numeric)))
+
+wilcox.test(abs(apply(subset(tb, value == 'estimate_mean' & shift == 'max')[c(9:11,13:22)], 2, as.numeric)),
+            abs(apply(subset(tb.mainland, value == 'estimate_mean' & shift == 'max')[c(9:11,13:22)], 2, as.numeric)), paired = T)
+
+################################################################################
+## TABLE S3         
+################################################################################
+
+tb1 = pivot_wider(tb.mainland[which(tb.mainland$value %in% c("significance","estimate_mean")),-1], values_from = names(tb.mainland)[8:22], names_from = value)
+tb1$shift = ifelse(tb1$shift == "max", "leading edge shift",ifelse(tb1$shift == "min","rear edge shift", "Expansion/Retraction"))
+tb1 = tb1[,-which(str_detect(colnames(tb1),"Loglik|phylo.mean"))]
+tb1[,c("r2.phylo","p.value.phylo", "R2.rr2", str_subset(names(tb1), 'estimate'))] = apply(tb1[,c("r2.phylo","p.value.phylo", "R2.rr2", str_subset(names(tb1), 'estimate'))], 2, as.numeric)
+tb1[,c("r2.phylo","p.value.phylo", "R2.rr2", str_subset(names(tb1), 'estimate'))] = round(tb1[,c("r2.phylo","p.value.phylo", "R2.rr2", str_subset(names(tb1), 'estimate'))],2)
+
+tb1[,c(7:36)] = apply(tb1[,c(7:36)], 2, as.character)
+tb1[is.na(tb1)] = ''
+for(i in seq(7,36,2)) {tb1[,i] = apply(tb1[,c(i, i+1)], 1, function(x) paste(x[1], x[2]))}
+tb1 = tb1[,-str_which(names(tb1), 'significance')]
+
+stargazer(tb1, summary = F, type = "html")
+
+################################################################################
+## TABLE S3
+## same with coef in km
+################################################################################
+
+tb1 = pivot_wider(tb_km[which(tb_km$value %in% c("significance","estimate_mean")),-1], values_from = names(tb_km)[8:22], names_from = value)
+tb1$shift = ifelse(tb1$shift == "max", "leading edge shift",ifelse(tb1$shift == "min","rear edge shift", "Expansion/Retraction"))
+tb1 = tb1[,-which(str_detect(colnames(tb1),"Loglik|phylo.mean"))]
+tb1[,c("r2.phylo","p.value.phylo", "R2.rr2", str_subset(names(tb1), 'estimate'))] = apply(tb1[,c("r2.phylo","p.value.phylo", "R2.rr2", str_subset(names(tb1), 'estimate'))], 2, as.numeric)
+tb1[,c("r2.phylo","p.value.phylo", "R2.rr2", str_subset(names(tb1), 'estimate'))] = round(tb1[,c("r2.phylo","p.value.phylo", "R2.rr2", str_subset(names(tb1), 'estimate'))],2)
+
+tb1[,c(7:36)] = apply(tb1[,c(7:36)], 2, as.character)
+tb1[is.na(tb1)] = ''
+for(i in seq(7,36,2)) {tb1[,i] = apply(tb1[,c(i, i+1)], 1, function(x) paste(x[1], x[2]))}
+tb1 = tb1[,-str_which(names(tb1), 'significance')]
+
+stargazer(tb1, summary = F, type = "html")
+
+################################################################################
+## TABLE S3
+## table of results without Orkney and the Shetlands
+################################################################################
+
+tb2 = pivot_wider(tb.mainland[which(tb.mainland$value %in% c("significance","estimate_mean")),-1], values_from = names(tb.mainland)[8:22], names_from = value)
+tb2 = tb2[-which(str_detect(tb2$model, "Non passeriformes")),]
+tb2$shift = ifelse(tb2$shift == "max", "leading edge shift",ifelse(tb2$shift == "min","rear edge shift", "Expansion/Retraction"))
+tb2 = tb2[,-which(str_detect(colnames(tb2),"Loglik|phylo.mean"))]
+tb2[,c("r2.phylo","p.value.phylo", "R2.rr2", str_subset(names(tb2), 'estimate'))] = apply(tb2[,c("r2.phylo","p.value.phylo", "R2.rr2", str_subset(names(tb2), 'estimate'))], 2, as.numeric)
+tb2[,c("r2.phylo","p.value.phylo", "R2.rr2", str_subset(names(tb2), 'estimate'))] = round(tb2[,c("r2.phylo","p.value.phylo", "R2.rr2", str_subset(names(tb2), 'estimate'))],2)
+
+
+tb2[,c(7:36)] = apply(tb2[,c(7:36)], 2, as.character)
+tb2[is.na(tb2)] = ''
+for(i in seq(7,36,2)) {tb2[,i] = apply(tb2[,c(i, i+1)], 1, function(x) paste(x[1], x[2]))}
+tb2 = tb2[,-str_which(names(tb2), 'significance')]
+
+stargazer(tb2, summary = F, type = "html")
+
+################################################################################
+## TABLE S3
+## table of results without Orkney and the Shetlands in km
+################################################################################
+
+tb2 = pivot_wider(tb_km.mainland[which(tb_km.mainland$value %in% c("significance","estimate_mean")),-1], values_from = names(tb_km.mainland)[8:22], names_from = value)
+tb2 = tb2[-which(str_detect(tb2$model, "Non passeriformes")),]
+tb2$shift = ifelse(tb2$shift == "max", "leading edge shift",ifelse(tb2$shift == "min","rear edge shift", "Expansion/Retraction"))
+tb2 = tb2[,-which(str_detect(colnames(tb2),"Loglik|phylo.mean"))]
+tb2[,c("r2.phylo","p.value.phylo", "R2.rr2", str_subset(names(tb2), 'estimate'))] = apply(tb2[,c("r2.phylo","p.value.phylo", "R2.rr2", str_subset(names(tb2), 'estimate'))], 2, as.numeric)
+tb2[,c("r2.phylo","p.value.phylo", "R2.rr2", str_subset(names(tb2), 'estimate'))] = round(tb2[,c("r2.phylo","p.value.phylo", "R2.rr2", str_subset(names(tb2), 'estimate'))],2)
+
+
+tb2[,c(7:36)] = apply(tb2[,c(7:36)], 2, as.character)
+tb2[is.na(tb2)] = ''
+for(i in seq(7,36,2)) {tb2[,i] = apply(tb2[,c(i, i+1)], 1, function(x) paste(x[1], x[2]))}
+tb2 = tb2[,-str_which(names(tb2), 'significance')]
+
+stargazer(tb2, summary = F, type = "html")
+
+################################################################################
+## FIGURE 2 and 3
+
+#########################
 ### whole study
 library(tidyverse)
 tb[,8:22] = apply(tb[,8:22], 2, as.numeric)
 
 tb2 = pivot_longer(tb, cols = 8:22, names_to = "covariate", values_to = "estimate")
 tb2 = pivot_wider(tb2[,2:13], values_from = estimate, names_from = value)
-# tb2 = tb2[-which(str_detect(tb2$model, "Non passeriformes")),]
 tb2$shift = ifelse(tb2$shift == "max", "leading edge shift",ifelse(tb2$shift == "min","rear edge shift", "Expansion"))
 
 tb2$significance = ifelse(tb2$p.value_mean<0.001,"***",ifelse(tb2$p.value_mean<0.01,"**",ifelse(tb2$p.value_mean<0.05,"*",ifelse(tb2$p.value_mean<0.1,".",""))))
@@ -521,6 +683,8 @@ traits_nodiff.mainland = traits.mainland[which(traits.mainland$shift!='Expansion
 
 ##################################
 ### BIOGEOGRAPHICAL COVARIATES
+### FIGURE 2
+
 biogeo.mainland$shift = factor(biogeo.mainland$shift, levels = c('rear edge shift', 'leading edge shift'))
 # levels(biogeo$shift) = c('rear edge shift', 'leading edge shift', 'expansion')
 biogeo.mainland$linesize = ifelse(biogeo.mainland$significance %in% c(''), 1, 1.5)
@@ -567,33 +731,14 @@ ggarrange(g1,g3,g2,g4, common.legend = T, widths = c(1.4,1))
 library(cowplot)
 ggsave2('plots/ModelEstimates_Biogeo.Mainland.jpeg', scale = 2.5, dpi = 500, width = 8)
 
-### SPECIES TRAITS
-labels = c('','Association with forest/grassland','','','Association with urban area/cropland','','','Diet diversity','','','Habitat generality','','','Log 10 body mass','','','Migratory status - Migrant','','','Normalised number of prey','','','Number of predators','','','Precipitation seasonality','','','Temperature seasonality','','','Trophic position','')
-
-g1 = ggplot(data = traits[which(traits$model == "northern"),], aes(x = estimate_mean, y = paste(covariate,shift), colour = shift, label = significance)) + geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0.5, vjust=0.2,show.legend=FALSE, size = 10) + xlab("Estimate") + ylab("") + ggtitle('Northern species') + geom_errorbarh(aes(y = paste(covariate,shift), xmin = CI_lo, xmax = CI_up), size = 1, height = .1, alpha = .8) + xlim(min(traits[,'CI_lo']),max(traits[,'CI_up'])) + scale_y_discrete(labels = labels) + ggtitle('Northern species')+ scale_colour_manual(values= safe_colorblind_palette) + theme_bw(base_size = 15) + theme(axis.ticks = element_blank())  + geom_hline(yintercept = seq(3.5,30.5,3), colour = 'grey', linetype = 'longdash')
-g2 = ggplot(data = traits[which(traits$model == "southern"),], aes(x = estimate_mean, y = paste(covariate,shift), colour = shift, label = significance)) + geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0.5, vjust=0.2,show.legend=FALSE, size = 10) + xlab("Estimate") + ylab("") + ggtitle('Southern species')+ geom_errorbarh(aes(y = paste(covariate,shift), xmin = CI_lo, xmax = CI_up),size = 1, height = .1, alpha = .8) + xlim(min(traits[,'CI_lo']),max(traits[,'CI_up'])) + scale_y_discrete(labels = labels)+ ggtitle('Southern species')+ scale_colour_manual(values= safe_colorblind_palette) + theme_bw(base_size = 15) + theme(axis.ticks = element_blank())  + geom_hline(yintercept =seq(3.5,30.5,3), colour = 'grey', linetype = 'longdash')
-g3 = ggplot(data = traits[which(traits$model == "Passeriformes"),], aes(x = estimate_mean, y = paste(covariate,shift), colour = shift, label = significance)) + geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0.5, vjust=0.2,show.legend=FALSE, size = 10) + xlab("Estimate") + ylab("") + ggtitle('Passeriformes') + geom_errorbarh(aes(y = paste(covariate,shift), xmin = CI_lo, xmax = CI_up), size = 1, height = .1, alpha = .8) + xlim(min(traits[,'CI_lo']),max(traits[,'CI_up'])) + scale_y_discrete(labels =labels)+ ggtitle('Passeriformes')+ scale_colour_manual(values= safe_colorblind_palette) + theme_bw(base_size = 15) + theme(axis.ticks = element_blank())  + geom_hline(yintercept = seq(3.5,30.5,3), colour = 'grey', linetype = 'longdash')
-g4 = ggplot(data = traits[which(traits$model == "terrestrial"),], aes(x = estimate_mean, y = paste(covariate,shift), colour = shift, label = significance)) + geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0.5, vjust=0.2,show.legend=FALSE, size = 10) + xlab("Estimate") + ylab("") + ggtitle('All species') + geom_errorbarh(aes(y = paste(covariate,shift), xmin = CI_lo, xmax = CI_up), size = 1, height = .1, alpha = .8) + xlim(min(traits[,'CI_lo']),max(traits[,'CI_up'])) + scale_y_discrete(labels =labels)+ ggtitle('All species')+ scale_colour_manual(values= safe_colorblind_palette) + theme_bw(base_size = 15) + theme(axis.ticks = element_blank())  + geom_hline(yintercept = seq(3.5,30.5,3), colour = 'grey', linetype = 'longdash')
-
-# g1 = ggplot(data = traits[which(traits$model == "northern"),], aes(x = estimate_mean, y = covariate, colour = shift, label = significance, alpha = 1/p.value_mean)) + geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0, vjust=0,show.legend=FALSE) + xlab("Estimate") + ylab("") + xlim(min(traits$estimate_mean), max(traits$estimate_mean)) + ggtitle('Northern species') + theme_classic(base_size =  20) + theme(legend.position = 'bottom')
-# g2 = ggplot(data = traits[which(traits$model == "southern"),], aes(x = estimate_mean, y = covariate, colour = shift, label = significance, alpha = 1/p.value_mean)) + geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0, vjust=0,show.legend=FALSE) + xlab("Estimate") + ylab("") + xlim(min(traits$estimate_mean), max(traits$estimate_mean)) + ggtitle('Southern species')+ theme_classic(base_size =  20) + theme(legend.position = 'bottom')
-# g3 = ggplot(data = traits[which(traits$model == "Passeriformes"),], aes(x = estimate_mean, y = covariate, colour = shift, label = significance, alpha = 1/p.value_mean)) + geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0, vjust=0,show.legend=FALSE) + xlab("Estimate") + ylab("") + xlim(min(traits$estimate_mean), max(traits$estimate_mean)) + ggtitle('Passeriformes')+ theme_classic(base_size =  20) + theme(legend.position = 'bottom')
-# g4 = ggplot(data = traits[which(traits$model == "terrestrial"),], aes(x = estimate_mean, y = covariate, colour = shift, label = significance, alpha = 1/p.value_mean)) + geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0, vjust=0,show.legend=FALSE) + xlab("Estimate") + ylab("") + xlim(min(traits$estimate_mean), max(traits$estimate_mean)) + ggtitle('All species')+ theme_classic(base_size =  20) + theme(legend.position = 'bottom')
-
-ggarrange(g1,Northern.dist,g3, g2,Southern.dist,g4, common.legend = T, labels = c('a','','c','b','','d'), font.label = list(size = 18))
-
-setwd("E:/TheseSwansea/TraitStudy/code_Miguel")
-## Figure 1 - Estimates from GLMM 
-ggsave2('ModelEstimates_Traits_maps.jpeg', scale = 2.2, dpi = 800)
-
-
+################################################################################
 ### SPECIES TRAITS - no expansion
-# labels = c('','','Forest/grassland','','Urban area/cropland','','Body mass','','Diet diversity','','Habitat generality','','Migratory status - Migrant','','Normalised indegree','','Precipitation seasonality','','Temperature seasonality','','Trophic position','','Vulnerability','')
+### FIGURE 3
+
 labels = c('','Diet diversity','','Habitat generality','','Hand wing index','','Log 10 body mass','','Normalised number of prey','','Number of predators','','Association with precipitation','','Association with forest/grassland','','Association with temperature','','Association with urban area/cropland','','Trophic position','')
-# with migratory status
-# labels = c('','Association with forest/grassland','','Association with urban area/cropland','','Diet diversity','','Habitat generality','','Log 10 body mass','','Migrant status - Migrant','','Normalised number of prey','','Number of predators','','Association with precipitation','','Association with temperature','','Trophic position','')
 
 
+### Whole study area
 library(ggrepel)
 traits_nodiff$shift = relevel(traits_nodiff$shift, "rear edge shift")
 traits_nodiff$linesize = ifelse(traits_nodiff$significance %in% c(''), 1, 1.5)
@@ -611,11 +756,8 @@ g4 = ggplot(data = traits_nodiff[which(traits_nodiff$model == "terrestrial"),], 
 
 ggarrange(g1,Northern.dist,g3, g2,Southern.dist,g4, common.legend = T, labels = c('a','','c','b','','d'), widths = c(1.5,1,1.5), font.label = list(size = 20))
 
-## Old Figure 1 - Estimates from GLMM 
-ggsave('plots/ModelEstimates_Traits_maps.nodiff.CI.WholeStudy.jpeg', width = 10, scale = 2.4, dpi = 1200, bg = "white")
-ggsave('ModelEstimates_Traits_maps.nodiff.CI.pdf', scale = 2.2, dpi = 1200, bg = "white", device = "pdf")
 
-library(ggrepel)
+### Mainland
 traits_nodiff.mainland$shift = relevel(traits_nodiff.mainland$shift, "rear edge shift")
 traits_nodiff.mainland$linesize = ifelse(traits_nodiff.mainland$significance %in% c(''), 1, 1.5)
 
@@ -628,20 +770,19 @@ g2.m = ggplot(data = traits_nodiff.mainland[which(traits_nodiff.mainland$model =
 g3.m = ggplot(data = traits_nodiff.mainland[which(traits_nodiff.mainland$model == "Passeriformes"),], aes(x = estimate_mean, y = CovShift, colour = shift, label = significance)) + geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0.5, vjust=0.2,show.legend=FALSE, size = 10) + xlab("Estimate") + ylab("") + ggtitle('Mainland') + geom_errorbarh(aes(y = CovShift, xmin = CI_lo, xmax = CI_up, size = linesize), height = .1, alpha = .8) + xlim(min(traits_nodiff.mainland[,'CI_lo']),max(traits_nodiff.mainland[,'CI_up'])) + scale_colour_manual(values= safe_colorblind_palette) + theme_bw(base_size = 20) + theme(axis.ticks = element_blank(), axis.text.y = element_blank())  + geom_hline(yintercept = seq(2.5,20.5,2), colour = 'grey', linetype = 'longdash') + guides(size = 'none')
 g4.m = ggplot(data = traits_nodiff.mainland[which(traits_nodiff.mainland$model == "terrestrial"),], aes(x = estimate_mean, y = CovShift, colour = shift, label = significance)) + geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0.5, vjust=0.2,show.legend=FALSE, size = 10) + xlab("Estimate") + ylab("") + ggtitle('Mainland') + geom_errorbarh(aes(y = CovShift, xmin = CI_lo, xmax = CI_up), size = 1, height = .1, alpha = .8) + xlim(min(traits_nodiff.mainland[,'CI_lo']),max(traits_nodiff.mainland[,'CI_up'])) + scale_colour_manual(values= safe_colorblind_palette) + theme_bw(base_size = 20) + theme(axis.ticks = element_blank(), axis.text.y = element_blank())  + geom_hline(yintercept = seq(2.5,20.5,2), colour = 'grey', linetype = 'longdash') + guides(size = 'none')
 
+
+### put both mainland and whole study area together into one plot
 ggarrange(g1,g1.m,g3, g3.m, g2, g2.m, g4, g4.m, common.legend = T,
           ncol = 4, nrow = 2, widths = c(1.2,0.6,1.2,0.6), font.label = list(size = 20))
 
-## Figure 1 - Estimates from GLMM 
+## Figure 3:
 ggsave('plots/ModelEstimates.nodiff.CI.WholeStudy.Mainland.jpeg', width = 10, scale = 2.4, dpi = 800, bg = "white")
 
 
 
-g1bis = ggplot(data = traits_nodiff[which(traits_nodiff$model == "northern"),], aes(x = estimate_mean, y = paste(covariate,shift), colour = shift, label = significance)) + geom_hline(yintercept = seq(2.5,20.5,2), colour = 'grey', linetype = 'longdash') + geom_vline(xintercept = 0) + geom_point(size = 2) + geom_text(hjust=0.5, vjust=0.35,show.legend=FALSE, size = 10) + xlab("Estimate") + ylab("") + ggtitle('Northern species') + geom_errorbarh(aes(y = paste(covariate,shift), xmin = CI_lo, xmax = CI_up), size = 1, height = .1) + xlim(min(traits_nodiff[,'CI_lo']),max(traits_nodiff[,'CI_up'])) + scale_y_discrete(expand = c(0, 1), limits=rev) 
-
-ggarrange(g1bis, g1)
-
 ################################################################################
 # non parametric t.test : Wilcoxon rank sum test with continuity correction
+
 wilcox.test(shift_max20_P.1.3_dist_km ~ distrib.core, data = species_traits, alternative = "less") # H0: north shifted less than south
 wilcox.test(shift_min20_P.1.3_dist_km ~ distrib.core, data = species_traits, alternative = "less")
 
@@ -677,8 +818,6 @@ wilcox.test(shift_min20_P.1.3_dist_km ~ migratory_binomial, data = species_trait
 
 
 
-
-
 ################################################################################
 ### Figure S1 - Effect of distance to either boundary 
 
@@ -698,32 +837,3 @@ ggarrange(g1,g2)
 ggsave2('DistToBoundaries.jpeg', scale = 1.5)
 
 
-
-################################################################################
-### regression plots
-
-par(mfrow = c(2,2))
-plot(data = subset(species_traits, distrib.core == 'north'), 
-     shift_max20_P.1.3_dist_km ~ scale(trophic_position), pch = 19, xlab = 'scaled trophic position',
-     ylab = 'leading edge shift (km)')
-abline(a = tb$X.Intercept.[which(tb$model == 'northern' & tb$shift =='max' & tb$value == 'estimate_mean')], 
-       b = tb$scale.trophic_position.[which(tb$model == 'northern' & tb$shift =='max')])
-
-plot(data = subset(species_traits, distrib.core == 'north'), 
-     shift_max20_P.1.3_dist_km ~ scale(pc1_lc), pch = 19, xlab = 'scaled land cover',
-     ylab = 'leading edge shift (km)')
-abline(a = tb$X.Intercept.[which(tb$model == 'northern' & tb$shift =='max' & tb$value == 'estimate_mean')], 
-       b = tb$scale.pc1_lc.[which(tb$model == 'northern' & tb$shift =='max')])
-
-
-plot(data = subset(species_traits, distrib.core == 'north'), 
-     shift_max20_P.1.3_dist_km ~ scale(dist_N_km_max20_P.1), pch = 19, xlab = 'scaled distance to northern boundary',
-     ylab = 'leading edge shift (km)')
-abline(a = tb$X.Intercept.[which(tb$model == 'northern' & tb$shift =='max' & tb$value == 'estimate_mean')], 
-       b = tb$scale.dist_N_km_max20_P.1.[which(tb$model == 'northern' & tb$shift =='max')])
-
-plot(data = subset(species_traits, distrib.core == 'north'), 
-     shift_max20_P.1.3_dist_km ~ scale(dist_S_km_min20_P.1), pch = 19, xlab = 'scaled distance to southern boundary',
-     ylab = 'leading edge shift (km)')
-abline(a = tb$X.Intercept.[which(tb$model == 'northern' & tb$shift =='max' & tb$value == 'estimate_mean')], 
-       b = tb$scale.dist_S_km_min20_P.1.[which(tb$model == 'northern' & tb$shift =='max')])
