@@ -281,45 +281,11 @@ ggarrange(g1,g2)
 
 ggsave('ExplainedVariancePCA.jpeg', dpi = 600)
 
-################################################################################
-## MIGRATORY BEHAVIOUR
-################################################################################
-
-
-#### Another ecological trait that might play a role in range shifts is the migratory behaviour
-#### of the different species. We fetch these data here and add it to our analyses
-
-migratory_behaviour <- read.table('data/specieslist3_1_migbehav_v1_0.txt', sep='\t', header = TRUE)
-
-# a few species have names that don't correspond to the migratory behaviour dtf so we extract them from the BTO scientific names
-species_traits$scientific_name_ <- sub(' ', '_', species_traits$scientific_name)
-
-setdiff(species_traits$scientific_name_ET_, migratory_behaviour$IOC3_1_Binomial)
-setdiff(species_traits$scientific_name_, migratory_behaviour$IOC3_1_Binomial)
-
-# together with the ET and BTO nomenclature we have a perfect macth with migratory dataset
-species_traits$scientific_name_Migration = species_traits$scientific_name_
-species_traits$scientific_name_Migration[which(!species_traits$scientific_name_Migration %in% migratory_behaviour$IOC3_1_Binomial)] = species_traits$scientific_name_ET_[which(!species_traits$scientific_name_Migration %in% migratory_behaviour$IOC3_1_Binomial)]
-# Should be zero
-setdiff(species_traits$scientific_name_Migration, migratory_behaviour$IOC3_1_Binomial)
-
-species_traits$migratory <- migratory_behaviour[match(species_traits$scientific_name_Migration, migratory_behaviour$IOC3_1_Binomial),]$Migratory_status
-
-summary(droplevels(factor(species_traits$migratory)))
-
-#### among all the migratory categories in this database we chose only the species tagger as 'directional migratory'
-#### i.e. those migrating to and fro breeding grounds every year, as migrants
-species_traits$migratory_binomial <- 0
-species_traits[which(species_traits$migratory == 'directional migratory'),]$migratory_binomial <- 1
-
-
-species_traits = species_traits[-which(is.na(species_traits$trophic_position)),]
-
-summary(species_traits)
-
 
 ################################################################################
 ## HAND WING INDEX
+# Dispersal capabilities through the global hand-wing index (Sheard et al., 2020) can be accessed at https://zenodo.org/record/3747657
+
 
 library(readxl)
 HWI = read_excel("data/Global-HWI-master/Dataset HWI 2020-04-10.xlsx")

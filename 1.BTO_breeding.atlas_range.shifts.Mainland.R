@@ -14,6 +14,10 @@ library(sdm)
 #sdm::installAll()
 #install.packages("rnaturalearthdata")
 
+
+setwd("E:/TheseSwansea/TraitStudy/Github")
+dir.analysis = "E:/TheseSwansea/TraitStudy/Github"
+
 ################################################################################
 ## Load map
 
@@ -22,8 +26,12 @@ sf_UK <- subset(sf_UK, !(name %in% c('Orkney','Shetland Islands') | region %in% 
 # sf_UK  <- ne_countries(scale = "medium", country = 'United Kingdom', returnclass = "sf")
 ggplot(data = sf_UK) + geom_sf()
 
+
+##########################
 ## BTO Distribution data
-setwd("E:/TheseSwansea/TraitStudy/Github")
+
+# Breeding and wintering bird distributions in Britain and Ireland from citizen science bird atlases (Gillings et al., 2019) can be accessed at https://www.bto.org/our-science/data/what-data-are-available
+
 BTO_distrib <- read.csv("data/distributions.csv", header=T) # period, sp code, season and grid for GB and Ireland
 
 ## BTO Species names data
@@ -121,7 +129,7 @@ Spec <- left_join(Spec, Distr.Core)
 #####################
 # Species trait data
 
-# EltonTraits v1.0 (Wilman et al. (2014), https://figshare.com/articles/Data_Paper_Data_Paper/3559887)
+# Species traits (diet composition, body mass - Elton traits) (Wilman et al., 2014) can be accessed at https://figshare.com/articles/Data_Paper_Data_Paper/3559887
 temp <- tempfile()
 download.file("https://ndownloader.figshare.com/files/5631081", temp)
 
@@ -282,7 +290,10 @@ for (i in unique(prop_marine$speccode[which(prop_marine$prop_Marine20km>75)])){
 
 ######
 # CRU climate data
-setwd("E:/TheseSwansea/TraitStudy/Github/Range-shift-BTO-breeding-birds/data/CRU_Climate/")
+
+# Climatic data (Climatic Research Unit (CRU) time series v.4.01 from 1901 to 2016) (Harris et al., 2020) can be accessed at https://catalogue.ceda.ac.uk/uuid/58a8802721c94c66ae45c3baa4d814d0
+
+setwd("data/CRU_Climate/")
 require(ncdf4)
 
 # Load the CRU TS dataset into R as rasterBrick
@@ -362,7 +373,7 @@ ggplot() + geom_raster(data = df_tmp_seas.1_P.1, aes(x = x, y = y, fill=layer))
 ######
 # HILDA historical land use (http://www.geo-informatie.nl/fuchs003/#)
 
-setwd("E:/TheseSwansea/TraitStudy/Github/Range-shift-BTO-breeding-birds/HILDA_v2._LandUseChangesEurope")
+setwd("data/HILDA_v2._LandUseChangesEurope")
 
 #lu_P.1_st <- read_stars("./Gross_Final_1km_EU27CH_TIFF/eu27ch1960.tif")
 #lu_P.1_st <- st_transform(lu_P.1_st, crs= 4326)
@@ -591,10 +602,8 @@ for(sp in paste0("Sp",spec_speccode)){
 
 	if(!file.exists(filename)){
 		fo_P.1 <- as.formula(paste(sp,'~ tmp_seas.1_P.1+tmp_seas.2_P.1+pre_seas.1_P.1+pre_seas.2_P.1+pForest_P.1+pGrass_P.1+pCrop_P.1+pSettlem_P.1')) # formula for each species
-		##model_P.1 <- sdm(fo_P.1, data=d_P.1, methods=c('glm','brt'),replication='boot',n=10,parallelSettings=list(ncore=2,method='parallel',fork=F))
 		model_P.1 <- sdm(fo_P.1, data=d_P.1, methods=c('glm','gam', 'fda', 'svm', 'gbm'),replication='sub', test.p=30, n=10,parallelSettings=list(ncore=2,method='parallel',fork=F))
 		setwd(paste0(dir.analysis, "/sdm_output"))
-		##setwd("C:/USers/k.l.wells/Kons/BTO_analysis")
 		write.sdm(model_P.1, paste0('model_P.1_',sp,'.sdm'), overwrite=TRUE)
 	}else{}
 	print(paste0(sp, ", Species " , which(paste0("Sp",spec_speccode)==sp), "out of ", length(spec_speccode)))	
