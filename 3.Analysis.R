@@ -7,7 +7,7 @@
 rm(list = ls())
 
 
-setwd("E:/TheseSwansea/TraitStudy/Github")
+setwd("F:/TheseSwansea/TraitStudy/Github")
 species_traits <- read.csv('data/SpecTrait_Full_062023_159sp.csv', stringsAsFactors = FALSE, row.names = 1)
 species_traits.mainland <- read.csv('data/SpecTrait_Full_062023_156sp.csv', stringsAsFactors = FALSE, row.names = 1)
 
@@ -500,14 +500,6 @@ pglmm_shift_km = function(dta_list, mod){
 
 
 ################################################################################################################
-
-mod = c("terrestrial",'northern','southern',"Passeriformes")
-dta_list = list(
-  subset(species_traits, Marine == 0), # terrestrial
-  subset(species_traits, Marine == 0 & distrib.core == 'north'), 
-  subset(species_traits, Marine == 0 & distrib.core == 'south'), 
-  subset(species_traits, IOCOrder == "Passeriformes" & Marine == 0) # passeriformes
-)
 
 all_dta_km = pglmm_shift_km(dta_list, mod = mod)
 

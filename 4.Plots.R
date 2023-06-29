@@ -18,9 +18,10 @@ library(tidyr)
 library(stargazer)
 library(stringr)
 
-setwd("E:/TheseSwansea/TraitStudy/Github")
+setwd("F:/TheseSwansea/TraitStudy/Github")
 
-sf_UK  <- ne_countries(scale = "medium", country = 'United Kingdom', returnclass = "sf")
+sf_UK  <- ne_states(country = 'United Kingdom', returnclass = "sf")
+sf_UK <- subset(sf_UK, !(region %in% c('Northern Ireland')))
 
 ## Main table with all the species traits, range shift etc
 # for the whole study area
@@ -269,31 +270,11 @@ loc$Edge[which(loc$period == "2008-11")] = ifelse(loc$lat[which(loc$period == "2
 ## create main plot without legend (we will create legend below to have seperate legends for each element)
 Northern.dist = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") + geom_point(data = loc, aes(x = long, y = lat, colour = period), size = 1.5, shape = 15) +
   stat_ellipse(data = loc[which(loc$Edge %in% c("Leading","Rear")),], aes(x = long, y = lat, colour = Edge, linetype = period), size = 2) +
-  geom_hline(yintercept = min(BTO_distrib$lat), linetype="dashed", size = 2) + geom_hline(yintercept = max(Loc10$lat), linetype="dashed", size = 2) + scale_colour_manual(values = c("black", "gray57","#CC6677","#88CCEE")) +
+  geom_hline(yintercept = min(BTO_distrib$lat), linetype="dashed", size = 2) + geom_hline(yintercept = max(Loc10$lat), linetype="dashed", size = 2) + 
+  scale_colour_manual(values = c("black", "gray57","#CC6677","#88CCEE")) +
   ggtitle("Northern species - Whole study") + ylab("") + xlab("") + theme_classic(base_size =  23) + xlim(min(loc$long) - 1, max(Coord10$long)) +
   theme(legend.direction = "vertical", legend.box = "horizontal") +
   theme(legend.position = "none")
-
-## subplots to get legend for grid cell colour
-l1 = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") + geom_point(data = loc, aes(x = long, y = lat, colour = period), size = 1.5, shape = 15) +
-  scale_color_manual(name = "Time period",values = c("black", "gray57","#CC6677","#88CCEE")) + 
-  theme(legend.direction = "vertical", legend.box = "vertical", legend.text=element_text(size=15))
-leg1 <- get_legend(l1)
-
-## subplots to get legend for ellipses
-l2 = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") +   
-  stat_ellipse(data = loc[which(loc$Edge %in% c("Leading","Rear")),], aes(x = long, y = lat, colour = Edge, linetype = period), size = 2) +
-  scale_color_manual(name = "Range edge",values = c("#CC6677","#88CCEE")) + 
-  theme(legend.direction = "vertical", legend.box = "vertical", legend.text=element_text(size=15)) 
-leg2 <- get_legend(l2)
-
-## putting everything together into one plot
-library(patchwork)
-blank_p <- plot_spacer() + theme_void()
-leg12 <- plot_grid(leg1,leg2,blank_p,ncol = 1)
-
-final_p <- plot_grid(Northern.dist,leg12, rel_widths = c(1,0.1))
-final_p 
 
 # SOUTHERN SPECIES
 loc = merge(Loc10, BTO_distrib[which(BTO_distrib$speccode == 272),])
@@ -315,26 +296,26 @@ Southern.dist = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") + geom_poin
 
 l1 = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") + geom_point(data = loc, aes(x = long, y = lat, colour = period), size = 1.5, shape = 15) +
   scale_color_manual(name = "Time period",values = c("black", "gray57","#CC6677","#88CCEE")) + 
-  theme(legend.direction = "vertical", legend.box = "vertical", legend.text=element_text(size=15))
+  guides(colour = guide_legend(override.aes = list(size = 7))) +
+  theme(legend.direction = "vertical", legend.box = "vertical", legend.text=element_text(size=20), legend.key.size = unit(1.5, 'cm'))
 leg1 <- get_legend(l1)
 
 l2 = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") +   
   stat_ellipse(data = loc[which(loc$Edge %in% c("Leading","Rear")),], aes(x = long, y = lat, colour = Edge, linetype = period), size = 2) +
-  scale_color_manual(name = "Range edge",values = c("#CC6677","#88CCEE")) + 
-  theme(legend.direction = "vertical", legend.box = "vertical", legend.text=element_text(size=15)) 
+  scale_color_manual(name = "Range edge",values = c("#CC6677","#88CCEE"))  + 
+  labs(linetype = 'Time period') +
+  guides(colour = guide_legend(override.aes = list(size = 7))) +
+  theme(legend.direction = "vertical", legend.box = "vertical", legend.text=element_text(size=20), legend.key.size = unit(1.5, 'cm'))
 leg2 <- get_legend(l2)
 
 library(patchwork)
 blank_p <- plot_spacer() + theme_void()
 leg12 <- plot_grid(leg1,leg2,blank_p,ncol = 1)
 
-final_p.south <- plot_grid(Southern.dist,leg12, rel_widths = c(1,0.1))
-final_p.south
-
 # ggsave('plots/NS.DistChange.Gadwall46.jpeg', scale = 2.5, dpi = 500, bg= 'transparent')
 
-ggarrange(final_p.south, final_p, common.legend = T, widths = c(0.8,0.8))
-ggsave('plots/NS.DistChange.WholeStudy.jpeg', width = 9, scale = 2.5, dpi = 500, bg= 'transparent')
+ggarrange(Southern.dist, leg12, Northern.dist, widths = c(1,0.05,1), heights = c(1,0.3,1), nrow = 1)
+ggsave('plots/NS.DistChange.WholeStudy.2.0.jpeg', width = 11, height = 7, scale = 2, dpi = 500, bg= 'transparent')
 
 
 ################################################################################

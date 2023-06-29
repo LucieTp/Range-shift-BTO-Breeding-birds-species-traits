@@ -15,14 +15,14 @@ library(sdm)
 #install.packages("rnaturalearthdata")
 
 
-setwd("E:/TheseSwansea/TraitStudy/Github")
-dir.analysis = "E:/TheseSwansea/TraitStudy/Github"
+setwd("F:/TheseSwansea/TraitStudy/Github")
+dir.analysis = "F:/TheseSwansea/TraitStudy/Github"
 
 ################################################################################
 ## Load map
 
 sf_UK  <- ne_states(country = 'United Kingdom', returnclass = "sf")
-sf_UK <- subset(sf_UK, !(name %in% c('Orkney','Shetland Islands') | region %in% c('Northern Ireland','')))
+sf_UK <- subset(sf_UK, !(region %in% c('Northern Ireland','')))
 # sf_UK  <- ne_countries(scale = "medium", country = 'United Kingdom', returnclass = "sf")
 ggplot(data = sf_UK) + geom_sf()
 
@@ -67,6 +67,7 @@ Loc10 <- Loc10 %>%  left_join(Coord10)
 # Filter missing coordinates
 Loc10 <- Loc10 %>%  filter(!is.na(long) & !is.na(lat))
 nloc <- nrow(Loc10)
+Loc10_whole = Loc10
 # 3867 locations occupied by birds
 
 Loc10 = subset(Loc10, lat < 58.7)
@@ -293,12 +294,11 @@ for (i in unique(prop_marine$speccode[which(prop_marine$prop_Marine20km>75)])){
 
 # Climatic data (Climatic Research Unit (CRU) time series v.4.01 from 1901 to 2016) (Harris et al., 2020) can be accessed at https://catalogue.ceda.ac.uk/uuid/58a8802721c94c66ae45c3baa4d814d0
 
-setwd("data/CRU_Climate/")
 require(ncdf4)
 
 # Load the CRU TS dataset into R as rasterBrick
-tmp <- raster::brick("cru_ts4.04.1901.2019.tmp.dat.nc", varname="tmp")
-pre <- raster::brick("cru_ts4.04.1901.2019.pre.dat.nc", varname="pre")
+tmp <- raster::brick("data/CRU_Climate/cru_ts4.04.1901.2019.tmp.dat.nc", varname="tmp")
+pre <- raster::brick("data/CRU_Climate/cru_ts4.04.1901.2019.pre.dat.nc", varname="pre")
 
 summary(BTO_distrib$period)
 
@@ -340,65 +340,60 @@ pre_seas.2_P.3 <- crop(calc(pre[[cru_seas.2_P.3]], fun = mean), sf_UK)
 stack_cru <- stack(tmp_seas.1_P.1, tmp_seas.1_P.2, tmp_seas.1_P.3, tmp_seas.2_P.1, tmp_seas.2_P.2, tmp_seas.2_P.3,  pre_seas.1_P.1, pre_seas.1_P.2, pre_seas.1_P.3, pre_seas.2_P.1, pre_seas.2_P.2, pre_seas.2_P.3)
 layerStats(stack_cru,'pearson',na.rm=TRUE)
 
-### plotting temperature and precipitation rasters
-par(mfrow=c(1,3))
-plot(tmp_seas.1_P.1, main = paste0("Winter temperature  ",as.character(period[1])))
-plot(tmp_seas.1_P.3, main = paste0("Winter temperature  ",as.character(period[2])))
-tmp_seas.1_diff_P1.3 = tmp_seas.1_P.3 - tmp_seas.1_P.1; plot(tmp_seas.1_diff_P1.3, 
-                                                             main = paste0("Difference in winter temperature","\n", "between 1968 and 2011"))
-
-plot(pre_seas.1_P.1, main = paste0("Winter precipitation ",as.character(period[1])))
-plot(pre_seas.1_P.3, main = paste0("Winter precipitation ",as.character(period[2])))
-pre_seas.1_diff_P1.3 = pre_seas.1_P.3 - pre_seas.1_P.1; plot(pre_seas.1_diff_P1.3, 
-                                                             main = paste0("Difference in winter precipitation","\n", "between 1968 and 2011"))
-
-plot(pre_seas.2_P.1, main = paste0("Summer precipitation ",as.character(period[1])))
-plot(pre_seas.2_P.3, main = paste0("Summer precipitation ",as.character(period[2])))
-pre_seas.2_diff_P1.3 = pre_seas.2_P.3 - pre_seas.2_P.1; plot(pre_seas.2_diff_P1.3, 
-                                                             main = paste0("Difference in summer precipitation","\n", "between 1968 and 2011"))
-
-plot(tmp_seas.2_P.1, main = paste0("Summer temperature ",as.character(period[1])))
-plot(tmp_seas.2_P.3, main = paste0("Summer temperature ",as.character(period[2])))
-tmp_seas.2_diff_P1.3 = tmp_seas.2_P.3 - tmp_seas.2_P.1; plot(tmp_seas.2_diff_P1.3, 
-                                                             main = paste0("Difference in summer temperature","\n", "between 1968 and 2011"))
-
-
-plot(values(tmp_seas.1_P.1), values(tmp_seas.1_P.3))
-
-# Convert to dataframe for ggplot
-df_tmp_seas.1_P.1 <- as.data.frame(tmp_seas.1_P.1, xy = TRUE)
-ggplot() + geom_raster(data = df_tmp_seas.1_P.1, aes(x = x, y = y, fill=layer))
-
+# ### plotting temperature and precipitation rasters
+# par(mfrow=c(1,3))
+# plot(tmp_seas.1_P.1, main = paste0("Winter temperature  ",as.character(period[1])))
+# plot(tmp_seas.1_P.3, main = paste0("Winter temperature  ",as.character(period[2])))
+# tmp_seas.1_diff_P1.3 = tmp_seas.1_P.3 - tmp_seas.1_P.1; plot(tmp_seas.1_diff_P1.3, 
+#                                                              main = paste0("Difference in winter temperature","\n", "between 1968 and 2011"))
+# 
+# plot(pre_seas.1_P.1, main = paste0("Winter precipitation ",as.character(period[1])))
+# plot(pre_seas.1_P.3, main = paste0("Winter precipitation ",as.character(period[2])))
+# pre_seas.1_diff_P1.3 = pre_seas.1_P.3 - pre_seas.1_P.1; plot(pre_seas.1_diff_P1.3, 
+#                                                              main = paste0("Difference in winter precipitation","\n", "between 1968 and 2011"))
+# 
+# plot(pre_seas.2_P.1, main = paste0("Summer precipitation ",as.character(period[1])))
+# plot(pre_seas.2_P.3, main = paste0("Summer precipitation ",as.character(period[2])))
+# pre_seas.2_diff_P1.3 = pre_seas.2_P.3 - pre_seas.2_P.1; plot(pre_seas.2_diff_P1.3, 
+#                                                              main = paste0("Difference in summer precipitation","\n", "between 1968 and 2011"))
+# 
+# plot(tmp_seas.2_P.1, main = paste0("Summer temperature ",as.character(period[1])))
+# plot(tmp_seas.2_P.3, main = paste0("Summer temperature ",as.character(period[2])))
+# tmp_seas.2_diff_P1.3 = tmp_seas.2_P.3 - tmp_seas.2_P.1; plot(tmp_seas.2_diff_P1.3, 
+#                                                              main = paste0("Difference in summer temperature","\n", "between 1968 and 2011"))
+# 
+# 
+# plot(values(tmp_seas.1_P.1), values(tmp_seas.1_P.3))
+# 
+# # Convert to dataframe for ggplot
+# df_tmp_seas.1_P.1 <- as.data.frame(tmp_seas.1_P.1, xy = TRUE)
+# ggplot() + geom_raster(data = df_tmp_seas.1_P.1, aes(x = x, y = y, fill=layer))
+# 
 
 ######
 # HILDA historical land use (http://www.geo-informatie.nl/fuchs003/#)
-
-setwd("data/HILDA_v2._LandUseChangesEurope")
 
 #lu_P.1_st <- read_stars("./Gross_Final_1km_EU27CH_TIFF/eu27ch1960.tif")
 #lu_P.1_st <- st_transform(lu_P.1_st, crs= 4326)
 #lu_P.1_st <- st_crop(lu_P.1_st, sf_UK)
 
 
-lu_P.1 <- raster::raster("./Gross_Final_1km_EU27CH_TIFF/eu27ch1960.tif")
-lu_P.2 <- raster::raster("./Gross_Final_1km_EU27CH_TIFF/eu27ch1980.tif")
-lu_P.3 <- raster::raster("./Gross_Final_1km_EU27CH_TIFF/eu27ch2000.tif")
+lu_P.1 <- terra::rast("data/HILDA_v2._LandUseChangesEurope/Gross_Final_1km_EU27CH_TIFF/eu27ch1960.tif")
+lu_P.2 <- terra::rast("data/HILDA_v2._LandUseChangesEurope/Gross_Final_1km_EU27CH_TIFF/eu27ch1980.tif")
+lu_P.3 <- terra::rast("data/HILDA_v2._LandUseChangesEurope/Gross_Final_1km_EU27CH_TIFF/eu27ch2000.tif")
 
-lu_P.1 <- projectRaster(lu_P.1, crs = crs(sf_UK))
-lu_P.2 <- projectRaster(lu_P.2, crs = crs(sf_UK))
-lu_P.3 <- projectRaster(lu_P.3, crs = crs(sf_UK))
+lu_P.1 <- terra::project(lu_P.1, crs(sf_UK))
+lu_P.2 <- terra::project(lu_P.2, crs(sf_UK))
+lu_P.3 <- terra::project(lu_P.3, crs(sf_UK))
 
-lu_P.1 <- crop(lu_P.1, sf_UK)
-lu_P.2 <- crop(lu_P.2, sf_UK)
-lu_P.3 <- crop(lu_P.3, sf_UK)
+lu_P.1 <- terra::crop(lu_P.1, sf_UK)
+lu_P.2 <- terra::crop(lu_P.2, sf_UK)
+lu_P.3 <- terra::crop(lu_P.3, sf_UK)
 
-values(lu_P.1) <- trunc(values(lu_P.1)/100)
-values(lu_P.2) <- trunc(values(lu_P.2)/100)
-values(lu_P.3) <- trunc(values(lu_P.3)/100)
 
 # Check similarity between layers
-stack_lu <- stack(lu_P.1, lu_P.2, lu_P.3)
-layerStats(stack_lu,'pearson',na.rm=TRUE)
+stack_lu <- terra::rast(list(lu_P.1, lu_P.2, lu_P.3))
+terra::layerCor(stack_lu,'pearson',na.rm=TRUE)
 
 lu_diff_P1.3 = lu_P.3 - lu_P.1
 
@@ -418,37 +413,39 @@ plot(lu_diff_P1.3, main = "Land cover change")
 # Extract environmental data for each grid cell
 
 plot(tmp_seas.1_P.1)
-points(data = Loc10[ ,c("long", "lat")], lat~long)
+points(data = Loc10_whole[ ,c("long", "lat")], lat~long)
 
-Loc10$tmp_seas.1_P.1 <- unlist(raster::extract(tmp_seas.1_P.1, data.frame(Loc10[ ,c("long", "lat")]), buffer = 10000))
-Loc10$tmp_seas.1_P.2 <- unlist(raster::extract(tmp_seas.1_P.2, data.frame(Loc10[ ,c("long", "lat")]), buffer = 10000))
-Loc10$tmp_seas.1_P.3 <- unlist(raster::extract(tmp_seas.1_P.3, data.frame(Loc10[ ,c("long", "lat")]), buffer = 10000))
-Loc10$tmp_seas.2_P.1 <- unlist(raster::extract(tmp_seas.2_P.1, data.frame(Loc10[ ,c("long", "lat")]), buffer = 10000))
-Loc10$tmp_seas.2_P.2 <- unlist(raster::extract(tmp_seas.2_P.2, data.frame(Loc10[ ,c("long", "lat")]), buffer = 10000))
-Loc10$tmp_seas.2_P.3 <- unlist(raster::extract(tmp_seas.2_P.3, data.frame(Loc10[ ,c("long", "lat")]), buffer = 10000))
-Loc10$pre_seas.1_P.1 <- unlist(raster::extract(pre_seas.1_P.1, data.frame(Loc10[ ,c("long", "lat")]), buffer = 10000))
-Loc10$pre_seas.1_P.2 <- unlist(raster::extract(pre_seas.1_P.2, data.frame(Loc10[ ,c("long", "lat")]), buffer = 10000))
-Loc10$pre_seas.1_P.3 <- unlist(raster::extract(pre_seas.1_P.3, data.frame(Loc10[ ,c("long", "lat")]), buffer = 10000))
-Loc10$pre_seas.2_P.1 <- unlist(raster::extract(pre_seas.2_P.1, data.frame(Loc10[ ,c("long", "lat")]), buffer = 10000))
-Loc10$pre_seas.2_P.2 <- unlist(raster::extract(pre_seas.2_P.2, data.frame(Loc10[ ,c("long", "lat")]), buffer = 10000))
-Loc10$pre_seas.2_P.3 <- unlist(raster::extract(pre_seas.2_P.3, data.frame(Loc10[ ,c("long", "lat")]), buffer = 10000))
+Loc10_whole$tmp_seas.1_P.1 <- unlist(raster::extract(tmp_seas.1_P.1, data.frame(Loc10_whole[ ,c("long", "lat")]), buffer = 10000))
+Loc10_whole$tmp_seas.1_P.2 <- unlist(raster::extract(tmp_seas.1_P.2, data.frame(Loc10_whole[ ,c("long", "lat")]), buffer = 10000))
+Loc10_whole$tmp_seas.1_P.3 <- unlist(raster::extract(tmp_seas.1_P.3, data.frame(Loc10_whole[ ,c("long", "lat")]), buffer = 10000))
+Loc10_whole$tmp_seas.2_P.1 <- unlist(raster::extract(tmp_seas.2_P.1, data.frame(Loc10_whole[ ,c("long", "lat")]), buffer = 10000))
+Loc10_whole$tmp_seas.2_P.2 <- unlist(raster::extract(tmp_seas.2_P.2, data.frame(Loc10_whole[ ,c("long", "lat")]), buffer = 10000))
+Loc10_whole$tmp_seas.2_P.3 <- unlist(raster::extract(tmp_seas.2_P.3, data.frame(Loc10_whole[ ,c("long", "lat")]), buffer = 10000))
+Loc10_whole$pre_seas.1_P.1 <- unlist(raster::extract(pre_seas.1_P.1, data.frame(Loc10_whole[ ,c("long", "lat")]), buffer = 10000))
+Loc10_whole$pre_seas.1_P.2 <- unlist(raster::extract(pre_seas.1_P.2, data.frame(Loc10_whole[ ,c("long", "lat")]), buffer = 10000))
+Loc10_whole$pre_seas.1_P.3 <- unlist(raster::extract(pre_seas.1_P.3, data.frame(Loc10_whole[ ,c("long", "lat")]), buffer = 10000))
+Loc10_whole$pre_seas.2_P.1 <- unlist(raster::extract(pre_seas.2_P.1, data.frame(Loc10_whole[ ,c("long", "lat")]), buffer = 10000))
+Loc10_whole$pre_seas.2_P.2 <- unlist(raster::extract(pre_seas.2_P.2, data.frame(Loc10_whole[ ,c("long", "lat")]), buffer = 10000))
+Loc10_whole$pre_seas.2_P.3 <- unlist(raster::extract(pre_seas.2_P.3, data.frame(Loc10_whole[ ,c("long", "lat")]), buffer = 10000))
+
+vals_P.1tot <- raster::extract(lu_P.1, data.frame(Loc10_whole[,c("long", "lat")]), buffer = 10000)
 
 for(p in 1:nloc){
-	vals_P.1 <- unlist(raster::extract(lu_P.1, data.frame(Loc10[p,c("long", "lat")]), buffer = 10000)) 
-	Loc10$pForest_P.1[p] <- length(which(vals_P.1==3)) / length(vals_P.1)
-	Loc10$pGrass_P.1[p] <- length(which(vals_P.1==4)) / length(vals_P.1)
-	Loc10$pCrop_P.1[p] <- length(which(vals_P.1==2)) / length(vals_P.1)
-	Loc10$pSettlem_P.1[p] <- length(which(vals_P.1==1)) / length(vals_P.1)
-	vals_P.2 <- unlist(raster::extract(lu_P.2, data.frame(Loc10[p,c("long", "lat")]), buffer = 10000)) 
-	Loc10$pForest_P.2[p] <- length(which(vals_P.2==3)) / length(vals_P.2)
-	Loc10$pGrass_P.2[p] <- length(which(vals_P.2==4)) / length(vals_P.2)
-	Loc10$pCrop_P.2[p] <- length(which(vals_P.2==2)) / length(vals_P.2)
-	Loc10$pSettlem_P.2[p] <- length(which(vals_P.2==1)) / length(vals_P.2)
-	vals_P.3 <- unlist(raster::extract(lu_P.3, data.frame(Loc10[p,c("long", "lat")]), buffer = 10000)) 
-	Loc10$pForest_P.3[p] <- length(which(vals_P.3==3)) / length(vals_P.3)
-	Loc10$pGrass_P.3[p] <- length(which(vals_P.3==4)) / length(vals_P.3)
-	Loc10$pCrop_P.3[p] <- length(which(vals_P.3==2)) / length(vals_P.3)
-	Loc10$pSettlem_P.3[p] <- length(which(vals_P.3==1)) / length(vals_P.3)
+	vals_P.1 <- unlist(raster::extract(lu_P.1, data.frame(Loc10_whole[p,c("long", "lat")]), buffer = 10000)) 
+	Loc10_whole$pForest_P.1[p] <- length(which(vals_P.1==2)) / length(vals_P.1)
+	Loc10_whole$pGrass_P.1[p] <- length(which(vals_P.1==3)) / length(vals_P.1)
+	Loc10_whole$pCrop_P.1[p] <- length(which(vals_P.1==1)) / length(vals_P.1)
+	Loc10_whole$pSettlem_P.1[p] <- length(which(vals_P.1==0)) / length(vals_P.1)
+	vals_P.2 <- unlist(raster::extract(lu_P.2, data.frame(Loc10_whole[p,c("long", "lat")]), buffer = 10000)) 
+	Loc10_whole$pForest_P.2[p] <- length(which(vals_P.2==2)) / length(vals_P.2)
+	Loc10_whole$pGrass_P.2[p] <- length(which(vals_P.2==3)) / length(vals_P.2)
+	Loc10_whole$pCrop_P.2[p] <- length(which(vals_P.2==1)) / length(vals_P.2)
+	Loc10_whole$pSettlem_P.2[p] <- length(which(vals_P.2==0)) / length(vals_P.2)
+	vals_P.3 <- unlist(raster::extract(lu_P.3, data.frame(Loc10_whole[p,c("long", "lat")]), buffer = 10000)) 
+	Loc10_whole$pForest_P.3[p] <- length(which(vals_P.3==2)) / length(vals_P.3)
+	Loc10_whole$pGrass_P.3[p] <- length(which(vals_P.3==3)) / length(vals_P.3)
+	Loc10_whole$pCrop_P.3[p] <- length(which(vals_P.3==1)) / length(vals_P.3)
+	Loc10_whole$pSettlem_P.3[p] <- length(which(vals_P.3==0)) / length(vals_P.3)
 }
 
 
@@ -457,10 +454,10 @@ for(p in 1:nloc){
 #load("Loc10.RData")
 
 
-Loc10_long1 = pivot_longer(Loc10,4:6, names_to = 'tmp_seas1')
-Loc10_long2 = pivot_longer(Loc10,7:9, names_to = 'tmp_seas2')
-Loc10_long3 = pivot_longer(Loc10,10:12, names_to = 'pre_seas1')
-Loc10_long4 = pivot_longer(Loc10,13:15, names_to = 'pre_seas2')
+Loc10_long1 = pivot_longer(Loc10_whole,4:6, names_to = 'tmp_seas1')
+Loc10_long2 = pivot_longer(Loc10_whole,7:9, names_to = 'tmp_seas2')
+Loc10_long3 = pivot_longer(Loc10_whole,10:12, names_to = 'pre_seas1')
+Loc10_long4 = pivot_longer(Loc10_whole,13:15, names_to = 'pre_seas2')
 
 g1 = ggplot(data = Loc10_long1, aes(y = value, x = tmp_seas1)) + geom_boxplot() + ggtitle('Winter - temperature seasonality')
 g2 = ggplot(data = Loc10_long2, aes(y = value, x = tmp_seas2)) + geom_boxplot() + ggtitle('Summer - temperature seasonality')
@@ -479,63 +476,64 @@ ggsave('ClimaticVariationAcrossPeriods.jpeg')
 ## FIGURE S3 and S4
 
 par(mfrow = c(1,4))
+par(mar = c(4,4,4,4))
 
-summary(Loc10)
-n = length(Loc10$tmp_seas.1_P.1[!is.na(Loc10$tmp_seas.1_P.1)])
+summary(Loc10_whole)
+n = length(Loc10_whole$tmp_seas.1_P.1[!is.na(Loc10_whole$tmp_seas.1_P.1)])
 
-mu <- c(mean(Loc10$tmp_seas.1_P.1, na.rm = T), mean(Loc10$tmp_seas.1_P.2, na.rm = T), mean(Loc10$tmp_seas.1_P.3, na.rm = T))
-CIs <-1.96*c(sd(Loc10$tmp_seas.1_P.1, na.rm = T), sd(Loc10$tmp_seas.1_P.2, na.rm = T),sd(Loc10$tmp_seas.1_P.3, na.rm = T))/sqrt(n)
-h <- barplot(mu, xlab="Period", ylab="Change in winter temperature seasonality", names.arg = c("P1", 'P2', "P3"), ylim = c(0, 9))
+mu <- c(mean(Loc10_whole$tmp_seas.1_P.1, na.rm = T), mean(Loc10_whole$tmp_seas.1_P.2, na.rm = T), mean(Loc10_whole$tmp_seas.1_P.3, na.rm = T))
+CIs <-1.96*c(sd(Loc10_whole$tmp_seas.1_P.1, na.rm = T), sd(Loc10_whole$tmp_seas.1_P.2, na.rm = T),sd(Loc10_whole$tmp_seas.1_P.3, na.rm = T))/sqrt(n)
+h <- barplot(mu, xlab="Period", ylab="Change in winter temperature seasonality", names.arg = c("P1", 'P2', "P3"), ylim = c(0, 9), cex.axis = 1.5, cex.names = 1.5, cex.lab = 1.5)
 arrows(h, mu-CIs, h, mu+CIs, code=3, length=0.05, angle=90)
 box()
 
-mu <- c(mean(Loc10$tmp_seas.2_P.1, na.rm = T), mean(Loc10$tmp_seas.2_P.2, na.rm = T), mean(Loc10$tmp_seas.2_P.3, na.rm = T))
-CIs <-1.96*c(sd(Loc10$tmp_seas.2_P.1, na.rm = T), sd(Loc10$tmp_seas.2_P.2, na.rm = T),sd(Loc10$tmp_seas.2_P.3, na.rm = T))/sqrt(n)
-h <- barplot(mu, xlab="Period", ylab="Change in summer temperature seasonality", names.arg = c("P1", 'P2', "P3"), ylim = c(0, 9))
+mu <- c(mean(Loc10_whole$tmp_seas.2_P.1, na.rm = T), mean(Loc10_whole$tmp_seas.2_P.2, na.rm = T), mean(Loc10_whole$tmp_seas.2_P.3, na.rm = T))
+CIs <-1.96*c(sd(Loc10_whole$tmp_seas.2_P.1, na.rm = T), sd(Loc10_whole$tmp_seas.2_P.2, na.rm = T),sd(Loc10_whole$tmp_seas.2_P.3, na.rm = T))/sqrt(n)
+h <- barplot(mu, xlab="Period", ylab="Change in summer temperature seasonality", names.arg = c("P1", 'P2', "P3"), ylim = c(0, 9), cex.axis = 1.5, cex.names = 1.5, cex.lab = 1.5)
 arrows(h, mu-CIs, h, mu+CIs, code=3, length=0.05, angle=90)
 box()
 
-mu <- c(mean(Loc10$pre_seas.1_P.1, na.rm = T), mean(Loc10$pre_seas.1_P.2, na.rm = T), mean(Loc10$pre_seas.1_P.3, na.rm = T))
-CIs <-1.96*c(sd(Loc10$pre_seas.1_P.1, na.rm = T), sd(Loc10$pre_seas.1_P.2, na.rm = T),sd(Loc10$pre_seas.1_P.3, na.rm = T))/sqrt(n)
-h <- barplot(mu, xlab="Period", ylab="Change in winter precipitation seasonality", names.arg = c("P1", 'P2', "P3"), ylim = c(0, 125))
+mu <- c(mean(Loc10_whole$pre_seas.1_P.1, na.rm = T), mean(Loc10_whole$pre_seas.1_P.2, na.rm = T), mean(Loc10_whole$pre_seas.1_P.3, na.rm = T))
+CIs <-1.96*c(sd(Loc10_whole$pre_seas.1_P.1, na.rm = T), sd(Loc10_whole$pre_seas.1_P.2, na.rm = T),sd(Loc10_whole$pre_seas.1_P.3, na.rm = T))/sqrt(n)
+h <- barplot(mu, xlab="Period", ylab="Change in winter precipitation seasonality", names.arg = c("P1", 'P2', "P3"), ylim = c(0, 125), cex.axis = 1.5, cex.names = 1.5, cex.lab = 1.5)
 arrows(h, mu-CIs, h, mu+CIs, code=3, length=0.05, angle=90)
 box()
 
-mu <- c(mean(Loc10$pre_seas.2_P.1, na.rm = T), mean(Loc10$pre_seas.2_P.2, na.rm = T), mean(Loc10$pre_seas.2_P.3, na.rm = T))
-CIs <-1.96*c(sd(Loc10$pre_seas.2_P.1, na.rm = T), sd(Loc10$pre_seas.2_P.2, na.rm = T),sd(Loc10$pre_seas.2_P.3, na.rm = T))/sqrt(n)
-h <- barplot(mu, xlab="Period", ylab="Change in summer precipitation seasonality", names.arg = c("P1", 'P2', "P3"), ylim = c(0, 125))
+mu <- c(mean(Loc10_whole$pre_seas.2_P.1, na.rm = T), mean(Loc10_whole$pre_seas.2_P.2, na.rm = T), mean(Loc10_whole$pre_seas.2_P.3, na.rm = T))
+CIs <-1.96*c(sd(Loc10_whole$pre_seas.2_P.1, na.rm = T), sd(Loc10_whole$pre_seas.2_P.2, na.rm = T),sd(Loc10_whole$pre_seas.2_P.3, na.rm = T))/sqrt(n)
+h <- barplot(mu, xlab="Period", ylab="Change in summer precipitation seasonality", names.arg = c("P1", 'P2', "P3"), ylim = c(0, 125), cex.axis = 1.5, cex.names = 1.5, cex.lab = 1.5)
 arrows(h, mu-CIs, h, mu+CIs, code=3, length=0.05, angle=90)
 box()
 
-ggsave('LandUseVariationAcrossPeriods.newplots.jpeg')
+ggsave('plots/LandUseVariationAcrossPeriods.newplots.jpeg')
 
 
 #########################
 ## LAND USE
 
-n = nrow(Loc10)
+n = nrow(Loc10_whole)
 
-mu <- c(mean(Loc10$pForest_P.1, na.rm = T), mean(Loc10$pForest_P.2, na.rm = T), mean(Loc10$pForest_P.3, na.rm = T))
-CIs <-1.96*c(sd(Loc10$pForest_P.1, na.rm = T), sd(Loc10$pForest_P.2, na.rm = T),sd(Loc10$pForest_P.3, na.rm = T))/sqrt(n)
-h <- barplot(mu, xlab="Period", ylab="Change in forest cover", names.arg = c("P1", 'P2', "P3"), ylim = c(0, .45))
+mu <- c(mean(Loc10_whole$pForest_P.1, na.rm = T), mean(Loc10_whole$pForest_P.2, na.rm = T), mean(Loc10_whole$pForest_P.3, na.rm = T))
+CIs <-1.96*c(sd(Loc10_whole$pForest_P.1, na.rm = T), sd(Loc10_whole$pForest_P.2, na.rm = T),sd(Loc10_whole$pForest_P.3, na.rm = T))/sqrt(n)
+h <- barplot(mu, xlab="Period", ylab="Change in forest cover", names.arg = c("P1", 'P2', "P3"), ylim = c(0, .45), cex.axis = 1.5, cex.names = 1.5, cex.lab = 1.5)
 arrows(h, mu-CIs, h, mu+CIs, code=3, length=0.05, angle=90)
 box()
 
-mu <- c(mean(Loc10$pGrass_P.1, na.rm = T), mean(Loc10$pGrass_P.2, na.rm = T), mean(Loc10$pGrass_P.3, na.rm = T))
-CIs <-1.96*c(sd(Loc10$pGrass_P.1, na.rm = T), sd(Loc10$pGrass_P.2, na.rm = T),sd(Loc10$pGrass_P.3, na.rm = T))/sqrt(n)
-h <- barplot(mu, xlab="Period", ylab="Change in grassland cover", names.arg = c("P1", 'P2', "P3"), ylim = c(0,.45))
+mu <- c(mean(Loc10_whole$pGrass_P.1, na.rm = T), mean(Loc10_whole$pGrass_P.2, na.rm = T), mean(Loc10_whole$pGrass_P.3, na.rm = T))
+CIs <-1.96*c(sd(Loc10_whole$pGrass_P.1, na.rm = T), sd(Loc10_whole$pGrass_P.2, na.rm = T),sd(Loc10_whole$pGrass_P.3, na.rm = T))/sqrt(n)
+h <- barplot(mu, xlab="Period", ylab="Change in grassland cover", names.arg = c("P1", 'P2', "P3"), ylim = c(0,.45), cex.axis = 1.5, cex.names = 1.5, cex.lab = 1.5)
 arrows(h, mu-CIs, h, mu+CIs, code=3, length=0.05, angle=90)
 box()
 
-mu <- c(mean(Loc10$pCrop_P.1, na.rm = T), mean(Loc10$pCrop_P.2, na.rm = T), mean(Loc10$pCrop_P.3, na.rm = T))
-CIs <-1.96*c(sd(Loc10$pCrop_P.1, na.rm = T), sd(Loc10$pCrop_P.2, na.rm = T),sd(Loc10$pCrop_P.3, na.rm = T))/sqrt(n)
-h <- barplot(mu, xlab="Period", ylab="Change in cropland cover", names.arg = c("P1", 'P2', "P3"), ylim = c(0, .45))
+mu <- c(mean(Loc10_whole$pCrop_P.1, na.rm = T), mean(Loc10_whole$pCrop_P.2, na.rm = T), mean(Loc10_whole$pCrop_P.3, na.rm = T))
+CIs <-1.96*c(sd(Loc10_whole$pCrop_P.1, na.rm = T), sd(Loc10_whole$pCrop_P.2, na.rm = T),sd(Loc10_whole$pCrop_P.3, na.rm = T))/sqrt(n)
+h <- barplot(mu, xlab="Period", ylab="Change in cropland cover", names.arg = c("P1", 'P2', "P3"), ylim = c(0, .45), cex.axis = 1.5, cex.names = 1.5, cex.lab = 1.5)
 arrows(h, mu-CIs, h, mu+CIs, code=3, length=0.05, angle=90)
 box()
 
-mu <- c(mean(Loc10$pSettlem_P.1, na.rm = T), mean(Loc10$pSettlem_P.2, na.rm = T), mean(Loc10$pSettlem_P.3, na.rm = T))
-CIs <-1.96*c(sd(Loc10$pSettlem_P.1, na.rm = T), sd(Loc10$pSettlem_P.2, na.rm = T),sd(Loc10$pSettlem_P.3, na.rm = T))/sqrt(n)
-h <- barplot(mu, xlab="Period", ylab="Change in urban area cover", names.arg = c("P1", 'P2', "P3"), ylim = c(0, .45))
+mu <- c(mean(Loc10_whole$pSettlem_P.1, na.rm = T), mean(Loc10_whole$pSettlem_P.2, na.rm = T), mean(Loc10_whole$pSettlem_P.3, na.rm = T))
+CIs <-1.96*c(sd(Loc10_whole$pSettlem_P.1, na.rm = T), sd(Loc10_whole$pSettlem_P.2, na.rm = T),sd(Loc10_whole$pSettlem_P.3, na.rm = T))/sqrt(n)
+h <- barplot(mu, xlab="Period", ylab="Change in urban area cover", names.arg = c("P1", 'P2', "P3"), ylim = c(0, .45), cex.axis = 1.5, cex.names = 1.5, cex.lab = 1.5)
 arrows(h, mu-CIs, h, mu+CIs, code=3, length=0.05, angle=90)
 box()
 
@@ -551,9 +549,9 @@ nEnvPred <- length(env.predictor_names)
 
 # Predictor data for different time periods
 
-Pred10_P.1 <- Loc10 %>% select(grid, long, lat, grep("P.1", names(Loc10)))
-Pred10_P.2 <- Loc10 %>% select(grid, long, lat, grep("P.2", names(Loc10)))
-Pred10_P.3 <- Loc10 %>% select(grid, long, lat, grep("P.3", names(Loc10)))
+Pred10_P.1 <- Loc10_whole %>% select(grid, long, lat, grep("P.1", names(Loc10_whole)))
+Pred10_P.2 <- Loc10_whole %>% select(grid, long, lat, grep("P.2", names(Loc10_whole)))
+Pred10_P.3 <- Loc10_whole %>% select(grid, long, lat, grep("P.3", names(Loc10_whole)))
 
 # Bird occurrence data
 spec_occ_P.1 <- BTO_distrib %>% filter( periodN=="P.1" & !is.na(match(speccode, spec_speccode))) %>% select(Spec, grid, Pres)
@@ -614,7 +612,7 @@ for(sp in paste0("Sp",spec_speccode)){
 ###########################################################
 
 #Names for SDM variable importance metrics
-varimp_names <- c(paste0("AUCtest_", names(Loc10)[-c(1:3)]), paste0("corTest_", names(Loc10)[-c(1:3)]))
+varimp_names <- c(paste0("AUCtest_", names(Loc10_whole)[-c(1:3)]), paste0("corTest_", names(Loc10_whole)[-c(1:3)]))
 # Dataframe SDM variable importance metrics
 df_SDM.varimp <- data.frame(array(NA, dim=c(nSpec, (length(varimp_names)+1))))
 colnames(df_SDM.varimp) <- c('speccode', varimp_names)

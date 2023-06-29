@@ -3,7 +3,7 @@
 ### SLIGHTLY MODIFIED CODE BY KONSTANS 
 
 
-
+setwd('F:/TheseSwansea/TraitStudy/Github')
 
 # Load some important packages 
 library(raster)  # The raster library is the most useful package for importing and working with raster files
@@ -23,7 +23,6 @@ sf_UK  <- ne_countries(scale = "medium", country = 'United Kingdom', returnclass
 ggplot(data = sf_UK) + geom_sf()
 
 ## BTO Distribution data
-setwd("E:/TheseSwansea/TraitStudy/Github/Range-shift-BTO-breeding-birds")
 BTO_distrib <- read.csv("data/distributions.csv", header=T) # period, sp code, season and grid for GB and Ireland
 
 ## BTO Species names data
@@ -223,12 +222,10 @@ prop_marine = df %>%
 
 ######
 # CRU climate data
-setwd("E:/TheseSwansea/TraitStudy/Github/Range-shift-BTO-breeding-birds/data/CRU_Climate/")
-
 
 # Load the CRU TS dataset into R as rasterBrick
-tmp <- raster::brick("cru_ts4.04.1901.2019.tmp.dat.nc", varname="tmp")
-pre <- raster::brick("cru_ts4.04.1901.2019.pre.dat.nc", varname="pre")
+tmp <- raster::brick("data/CRU_Climate/cru_ts4.04.1901.2019.tmp.dat.nc", varname="tmp")
+pre <- raster::brick("data/CRU_Climate/cru_ts4.04.1901.2019.pre.dat.nc", varname="pre")
 
 summary(BTO_distrib$period)
 
@@ -418,16 +415,14 @@ write.csv(x = df_rangeshift, file = "data/df_rangeshift_012023.csv")
 ######
 # HILDA historical land use (http://www.geo-informatie.nl/fuchs003/#)
 
-setwd("E:/TheseSwansea/TraitStudy/Github/Range-shift-BTO-breeding-birds/HILDA_v2._LandUseChangesEurope")
-
 #lu_P.1_st <- read_stars("./Gross_Final_1km_EU27CH_TIFF/eu27ch1960.tif")
 #lu_P.1_st <- st_transform(lu_P.1_st, crs= 4326)
 #lu_P.1_st <- st_crop(lu_P.1_st, sf_UK)
 
 
-lu_P.1 <- raster::raster("./Gross_Final_1km_EU27CH_TIFF/eu27ch1960.tif")
-lu_P.2 <- raster::raster("./Gross_Final_1km_EU27CH_TIFF/eu27ch1980.tif")
-lu_P.3 <- raster::raster("./Gross_Final_1km_EU27CH_TIFF/eu27ch2000.tif")
+lu_P.1 <- raster::raster("data/HILDA_v2._LandUseChangesEurope/Gross_Final_1km_EU27CH_TIFF/eu27ch1960.tif")
+lu_P.2 <- raster::raster("data/HILDA_v2._LandUseChangesEurope/Gross_Final_1km_EU27CH_TIFF/eu27ch1980.tif")
+lu_P.3 <- raster::raster("data/HILDA_v2._LandUseChangesEurope/Gross_Final_1km_EU27CH_TIFF/eu27ch2000.tif")
 
 lu_P.1 <- projectRaster(lu_P.1, crs = crs(sf_UK))
 lu_P.2 <- projectRaster(lu_P.2, crs = crs(sf_UK))
