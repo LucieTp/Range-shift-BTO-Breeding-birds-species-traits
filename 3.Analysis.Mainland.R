@@ -11,7 +11,7 @@
 rm(list = ls())
 
 
-setwd("E:/TheseSwansea/TraitStudy/Github/data")
+setwd("F:/TheseSwansea/TraitStudy/Github/data")
 species_traits <- read.csv('SpecTrait_Full_062023_156sp.csv', stringsAsFactors = FALSE, row.names = 1)
 species_traits.full <- read.csv('SpecTrait_Full_062023_159sp.csv', stringsAsFactors = FALSE, row.names = 1)
 
@@ -88,79 +88,21 @@ sptree_match = read.csv("BigBird.All.NewNames.6714Taxa.tre/PhyloTree_speciesMatc
 names(sptree_match)[1] = "species"
 species_traits$species[match(sptree_match$scientific_name_,species_traits$scientific_name_)] = sptree_match$species
 
-pruned_tree <- drop.tip(tree, setdiff(tree$tip.label, species_traits$species))
-
-################################################################################
-### LM checking assumptions
-
-mod = pglmm(sqrt(shift_min20_P.1.3_dist_km) ~ scale(log.BodyMass.Value) + scale(habitat_gen) + scale(normalised_indegree) + scale(diet_diversity) + scale(dist_N_km_max20_P.1) + scale(dist_S_km_min20_P.1)  +  migratory_binomial  + scale(trophic_position) + scale(outdegree) + scale(pc1_env) + scale(pc2_env) + scale(pc1_lc) + scale(pc2_lc) + scale(P.1) +
-              (1|species__), data = species_traits, family = "gaussian", cov_ranef = list(species = pruned_tree), REML = F)
-mod1 = pglmm(shift_max20_P.1.3_dist_km ~ scale(log.BodyMass.Value) + scale(habitat_gen) + scale(normalised_indegree) + scale(diet_diversity) + scale(dist_N_km_max20_P.1) + scale(dist_S_km_min20_P.1)  +  migratory_binomial  + scale(trophic_position) + scale(outdegree) + scale(pc1_env) + scale(pc2_env) + scale(pc1_lc) + scale(pc2_lc) + scale(P.1) +
-               (1|species__), data = species_traits, family = "gaussian", cov_ranef = list(species = pruned_tree), REML = F)
-
-library(DHARMa)
-plot(residuals(mod)~fitted(mod))
-ggplot(data.frame(residuals = residuals(mod), fitted = fitted(mod)), aes(x = residuals, y = fitted)) + geom_point() + geom_smooth(method = 'lm')
-ggplot(data.frame(residuals = residuals(mod1), fitted = fitted(mod1)), aes(x = residuals, y = fitted)) + geom_point() + geom_smooth(method = 'lm')
-
-par(mfrow = c(1,1))
-qqnorm(residuals(mod), pch = 1)
-qqline(residuals(mod), col = "steelblue", lwd = 2)
-
-qqnorm(residuals(mod1), pch = 1, frame = FALSE)
-qqline(residuals(mod1), col = "steelblue", lwd = 2)
-
-hist(species_traits$shift_max20_P.1.3_dist_km)
-hist(species_traits$shift_min20_P.1.3_dist_km)
-
-shapiro.test(residuals(mod))
-shapiro.test(residuals(mod1))
-
-
-library(MASS)
-
-dta = species_traits
-dta$log.BodyMass.Value = log10(dta$BodyMass.Value)
-mod.rlm = rlm(shift_max20_P.1.3_dist_km ~ scale(log.BodyMass.Value) + scale(habitat_gen) + scale(normalised_indegree) + scale(diet_diversity) + scale(dist_N_km_max20_P.1) + scale(dist_S_km_min20_P.1)  +  migratory_binomial  + scale(trophic_position) + scale(outdegree) + scale(pc1_env) + scale(pc2_env) + scale(pc1_lc) + scale(pc2_lc) + scale(P.1),
-          data = dta[which(dta$distrib.core == 'north'),])
-summary(mod.rlm)
-
-
-
-mod.max_shift <- pglmm(shift_max20_P.1.3_dist_km ~ scale(log.BodyMass.Value) + scale(habitat_gen) + scale(normalised_indegree) + scale(diet_diversity) + scale(dist_N_km_max20_P.1) + scale(dist_S_km_min20_P.1)  +  migratory_binomial  + scale(trophic_position) + scale(outdegree) + scale(pc1_env) + scale(pc2_env) + scale(pc1_lc) + scale(pc2_lc) + scale(P.1) +
-                         (1|species__), data = dta[which(dta$distrib.core == 'north'),], family = "gaussian", cov_ranef = list(species = pruned_tree), REML = F)
-
-
-
-################################################################################
-## TRYING GAM MODELS >> too few points, overfitting, don't know how to include phylo random effect
-library(mgcv)
-## ALL SPECIES
-mod = gam(shift_min20_P.1.3_dist_km ~ s(scale(log.BodyMass.Value)) + s(scale(habitat_gen)) + s(scale(normalised_indegree)) + s(scale(diet_diversity)) + s(scale(dist_N_km_max20_P.1)) + s(scale(dist_S_km_min20_P.1))  +  migratory_binomial  + s(scale(trophic_position)) + s(scale(outdegree)) + s(scale(pc1_env)) + s(scale(pc2_env)) + s(scale(pc1_lc)) + s(scale(pc2_lc)) + s(scale(P.1)), data = species_traits)
-summary(mod)
-
-mod = gam(shift_max20_P.1.3_dist_km ~ s(scale(log.BodyMass.Value)) + s(scale(habitat_gen)) + s(scale(normalised_indegree)) + s(scale(diet_diversity)) + s(scale(dist_N_km_max20_P.1)) + s(scale(dist_S_km_min20_P.1))  +  migratory_binomial  + s(scale(trophic_position)) + s(scale(outdegree)) + s(scale(pc1_env)) + s(scale(pc2_env)) + s(scale(pc1_lc)) + s(scale(pc2_lc)) + s(scale(P.1)), data = species_traits)
-summary(mod)
-
-#### SOUTH
-mod = gam(shift_min20_P.1.3_dist_km ~ s(scale(log.BodyMass.Value)) + s(scale(habitat_gen)) + s(scale(normalised_indegree)) + s(scale(diet_diversity)) + s(scale(dist_N_km_max20_P.1)) + s(scale(dist_S_km_min20_P.1))  +  migratory_binomial  + s(scale(trophic_position)) + s(scale(outdegree)) + scale(pc1_env) + scale(pc2_env) + scale(pc1_lc) + scale(pc2_lc) + s(scale(P.1)), data = subset(species_traits, distrib.core == 'south'))
-summary(mod)
-
-mod = gam(shift_max20_P.1.3_dist_km ~ s(scale(log.BodyMass.Value)) + s(scale(habitat_gen)) + s(scale(normalised_indegree)) + s(scale(diet_diversity)) + s(scale(dist_N_km_max20_P.1)) + s(scale(dist_S_km_min20_P.1))  +  migratory_binomial  + s(scale(trophic_position)) + s(scale(outdegree)) + scale(pc1_env) + scale(pc2_env) + scale(pc1_lc) + scale(pc2_lc) + s(scale(P.1)), data = subset(species_traits, distrib.core == 'south'))
-summary(mod)
-
-#### NORTH
-mod = gam(shift_min20_P.1.3_dist_km ~ scale(log.BodyMass.Value) + scale(habitat_gen) + scale(normalised_indegree) + scale(diet_diversity) + s(scale(dist_N_km_max20_P.1)) + s(scale(dist_S_km_min20_P.1))  +  migratory_binomial  + scale(trophic_position) + s(scale(outdegree)) + scale(pc1_env), data = subset(species_traits, distrib.core == 'north'))
-summary(mod)
-
-mod = gam(shift_max20_P.1.3_dist_km ~ scale(log.BodyMass.Value) + scale(habitat_gen) + scale(normalised_indegree) + scale(diet_diversity) + s(scale(dist_N_km_max20_P.1)) + s(scale(dist_S_km_min20_P.1))  +  migratory_binomial  + scale(trophic_position) + s(scale(outdegree)) + scale(pc1_env), data = subset(species_traits, distrib.core == 'north'))
-summary(mod)
-
-
-
 
 ################################################################################################################
 
+
+clean_names = list("log.BodyMass.Value" = "body mass (scaled)", "habitat_gen" = "Habitat generality",
+                   "normalised_indegree" = "normalised indegree","diet_diversity" = "diet diveristy",
+                   "dist_N_km_max20_P.1" = "distance to norhern boundary","dist_S_km_min20_P.1" = "distance to southern boundary",
+                   "HWI" = "hand wing index","trophic_position" = "trophic position","outdegree" = "number of predators", 
+                   "pc1_env" = "association with precipitation", "pc2_env" = "association with temperature", 
+                   "pc1_lc" = "association with forest and grassland","pc2_lc" = "association with urban and agricultural areas", 
+                   "P.1" = "Range size in P1")
+
+clean_shifts = list('shift_max20_P.1.3_dist_km' = "Leading edge shift (km)",
+                      'shift_min20_P.1.3_dist_km' = "Rear edge shift (km)",
+                      'shift_diff' = "Expansion (km)")
 
 ### FUNCTION FOR RUNNING ALL MODELS IN ONE LOOP
 pglmm_shift = function(dta_list, mod){
@@ -270,25 +212,34 @@ pglmm_shift = function(dta_list, mod){
       coef.all = mod.p$coefficients
       pvalue = summary(mod.p)$coefficients[,4]
       
-      names.all = names(coef.all)
+      names.all = names(coef.all)[pvalue<0.1]
       
-      names = names.all
+      if("(Intercept)" %in% names.all){names.all = names.all[-1]}
+      if("migratory_binomialMigrant" %in% names.all){names.all = names.all[-which(names.all == "migratory_binomialMigrant")]}
       
-      if("(Intercept)" %in% names){names = names[-1]}
-      if("migratory_binomialMigrant" %in% names){names = names[-which(names == "migratory_binomialMigrant")]}
+      pdf(file = paste0('F:/TheseSwansea/TraitStudy/Github/plots/visreg/',mod[model],"_",shift,'.pdf'), width = 10, height = 8)
       
-      par(mfrow = c(3,2))
+      if (length(names.all)>1){
+        par(mfrow = c(round(length(names.all)/2),2))
+        par(mar = c(5,5,5,5))
+      } else {par(mfrow = c(1,1)); par(mar = c(5,5,5,5))}
+      
+      
 
-      if(length(names)>0){
-        for(co in 1:length(names)){
-          print(names[co])
-          jpeg(paste0('E:/TheseSwansea/TraitStudy/Github/plots/visreg/LinearModels.',mod[model],'.',shift,'.',names[co],".jpg"), width = 400, height = 400, quality = 1000)
-          visreg::visreg(mod.p, regmatches(names[co], gregexpr("(?<=\\().*?(?=\\))", names[co], perl=T))[[1]])
+      if(length(names.all)>0){
+        for(co in 1:length(names.all)){
+          
+          nn = regmatches(names.all[co], gregexpr("(?<=\\().*?(?=\\))", names.all[co], perl=T))[[1]]
+          n = clean_names[nn]
+          print(nn)
+          
+          visreg::visreg(mod.p, nn, xlab = unlist(n), ylab = unlist(clean_shifts[shift]), main = mod[model], cex.lab = 1.5, cex.main = 1.5)
           # car::mcPlot(mod.p, variable = names[co], overlaid = F, ellipse=T, col.marginal='black', col.conditional= 'green4', title = F, new = F)
           # The second conditional plot is the added-variable plot of e(Y|Z) versus e(X|Z) where e(a|b) means the Pearson residuals from the regression of a on b.
-          dev.off()
+          
         }
       }
+      dev.off()
     }
   }
   return(all_dta)
@@ -380,31 +331,6 @@ unique(all_dta$model)
 x.wide = format.res(all_dta)
 
 write.csv(x.wide, "E:/TheseSwansea/TraitStudy/Github/results/pglmm_scaled_terrestrialNS_PCs_Std.Error.R2.Mainland_136sp.HWI.csv")
-
-
-
-
-
-### convert coefficients into km
-dta1 = subset(species_traits, Marine == 0 & distrib.core == 'north')
-dta1 = subset(species_traits, IOCOrder == "Passeriformes" & Marine == 0)
-
-## converting in units without scaling 
-mod.max_shift_km <- pglmm(shift_max20_P.1.3_dist_km ~ log.BodyMass.Value + habitat_gen + normalised_indegree + diet_diversity + dist_N_km_max20_P.1 + dist_S_km_min20_P.1  +  migratory_binomial  + trophic_position + outdegree + pc1_env + pc2_env + pc1_lc + pc2_lc + P.1 +
-                         (1|species__), data = dta1, family = "gaussian", cov_ranef = list(species = pruned_tree), REML = F)
-mod.max_shift <- pglmm(shift_max20_P.1.3_dist_km ~ scale(log.BodyMass.Value) + scale(habitat_gen) + scale(normalised_indegree) + scale(diet_diversity) + scale(dist_N_km_max20_P.1) + scale(dist_S_km_min20_P.1) + migratory_binomial +  scale(trophic_position) + scale(outdegree) + scale(pc1_env) + scale(pc2_env) + scale(pc1_lc) + scale(pc2_lc) + scale(P.1) +
-                         (1|species__), data = dta1, family = "gaussian", cov_ranef = list(species = pruned_tree), REML = F)
-
-summary(mod.max_shift_km)
-summary(mod.max_shift)
-
-21.7/sd(dta1$trophic_position)
-71.1/sd(dta1$outdegree)
-
-ggplot(data = dta1, aes(x = habitat_gen, y = shift_diff)) + geom_point() + geom_smooth()
-
-
-hist(species_traits$shift_max20_P.1.3_dist_km[which(species_traits$distrib.core == "north")])
 
 
 ###################################################################################

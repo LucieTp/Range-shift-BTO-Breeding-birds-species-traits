@@ -60,9 +60,9 @@ BTO_distrib <- read.csv("data/distributions.csv", header=T) # period, sp code, s
 
 # Mean coordinates of each grid cell
 Coord10 <- as_tibble(BTO_grid) %>%
-  filter(resolution==10 & order<5) %>%
-  group_by(grid) %>%
-  summarise(long = mean(long), lat = mean(lat))
+  dplyr::filter(resolution==10 & order<5) %>%
+  dplyr::group_by(grid) %>%
+  dplyr::summarise(long = mean(long), lat = mean(lat))
 
 # Location data 
 Loc10 <- BTO_distrib %>% dplyr::select(grid) %>% distinct(grid)
@@ -104,7 +104,11 @@ names(cov) = c('logged body mass', 'Forest and grassland', 'Urban and agricultur
                'Southern boundary')
 
 M <- cor(cov, use = 'complete.obs')
+
+
+pdf(file = "plots/corrplot.pdf", width = 9, height = 9) 
 corrplot(M, type="upper", order="hclust")
+dev.off()
 
 ################################################################################
 ## SHIFT DIRECTIONALITY
@@ -294,18 +298,18 @@ Southern.dist = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") + geom_poin
   theme(legend.direction = "vertical", legend.box = "horizontal") +
   theme(legend.position = "none")
 
-l1 = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") + geom_point(data = loc, aes(x = long, y = lat, colour = period), size = 1.5, shape = 15) +
+l1 = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") + geom_point(data = loc, aes(x = long, y = lat, colour = period), size = 2, shape = 15) +
   scale_color_manual(name = "Time period",values = c("black", "gray57","#CC6677","#88CCEE")) + 
   guides(colour = guide_legend(override.aes = list(size = 7))) +
-  theme(legend.direction = "vertical", legend.box = "vertical", legend.text=element_text(size=20), legend.key.size = unit(1.5, 'cm'))
+  theme(legend.direction = "vertical", legend.box = "vertical", legend.text=element_text(size=22), legend.title=element_text(size=22), legend.key.size = unit(1.5, 'cm'))
 leg1 <- get_legend(l1)
 
 l2 = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") +   
   stat_ellipse(data = loc[which(loc$Edge %in% c("Leading","Rear")),], aes(x = long, y = lat, colour = Edge, linetype = period), size = 2) +
-  scale_color_manual(name = "Range edge",values = c("#CC6677","#88CCEE"))  + 
+  scale_color_manual(name = "Range edge",values = c("#CC6677","#88CCEE")) + 
   labs(linetype = 'Time period') +
   guides(colour = guide_legend(override.aes = list(size = 7))) +
-  theme(legend.direction = "vertical", legend.box = "vertical", legend.text=element_text(size=20), legend.key.size = unit(1.5, 'cm'))
+  theme(legend.direction = "vertical", legend.box = "vertical", legend.text=element_text(size=22), legend.title=element_text(size=22), legend.key.size = unit(1.5, 'cm'))
 leg2 <- get_legend(l2)
 
 library(patchwork)
@@ -315,7 +319,7 @@ leg12 <- plot_grid(leg1,leg2,blank_p,ncol = 1)
 # ggsave('plots/NS.DistChange.Gadwall46.jpeg', scale = 2.5, dpi = 500, bg= 'transparent')
 
 ggarrange(Southern.dist, leg12, Northern.dist, widths = c(1,0.05,1), heights = c(1,0.3,1), nrow = 1)
-ggsave('plots/NS.DistChange.WholeStudy.2.0.jpeg', width = 11, height = 7, scale = 2, dpi = 500, bg= 'transparent')
+ggsave('plots/NS.DistChange.WholeStudy.2.0.jpeg', width = 12, height = 7, scale = 2, dpi = 800, bg= 'transparent')
 
 
 ################################################################################

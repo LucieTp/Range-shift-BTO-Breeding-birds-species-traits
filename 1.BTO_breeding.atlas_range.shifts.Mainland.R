@@ -15,8 +15,8 @@ library(sdm)
 #install.packages("rnaturalearthdata")
 
 
-setwd("F:/TheseSwansea/TraitStudy/Github")
-dir.analysis = "F:/TheseSwansea/TraitStudy/Github"
+setwd("E:/TheseSwansea/TraitStudy/Github")
+dir.analysis = "E:/TheseSwansea/TraitStudy/Github"
 
 ################################################################################
 ## Load map
@@ -428,24 +428,25 @@ Loc10_whole$pre_seas.2_P.1 <- unlist(raster::extract(pre_seas.2_P.1, data.frame(
 Loc10_whole$pre_seas.2_P.2 <- unlist(raster::extract(pre_seas.2_P.2, data.frame(Loc10_whole[ ,c("long", "lat")]), buffer = 10000))
 Loc10_whole$pre_seas.2_P.3 <- unlist(raster::extract(pre_seas.2_P.3, data.frame(Loc10_whole[ ,c("long", "lat")]), buffer = 10000))
 
-vals_P.1tot <- raster::extract(lu_P.1, data.frame(Loc10_whole[,c("long", "lat")]), buffer = 10000)
+
+buff = st_buffer(st_as_sf(Loc10_whole, coords = c('long',"lat"), crs = crs(sf_UK)), 10000)
 
 for(p in 1:nloc){
-	vals_P.1 <- unlist(raster::extract(lu_P.1, data.frame(Loc10_whole[p,c("long", "lat")]), buffer = 10000)) 
-	Loc10_whole$pForest_P.1[p] <- length(which(vals_P.1==2)) / length(vals_P.1)
-	Loc10_whole$pGrass_P.1[p] <- length(which(vals_P.1==3)) / length(vals_P.1)
-	Loc10_whole$pCrop_P.1[p] <- length(which(vals_P.1==1)) / length(vals_P.1)
-	Loc10_whole$pSettlem_P.1[p] <- length(which(vals_P.1==0)) / length(vals_P.1)
-	vals_P.2 <- unlist(raster::extract(lu_P.2, data.frame(Loc10_whole[p,c("long", "lat")]), buffer = 10000)) 
-	Loc10_whole$pForest_P.2[p] <- length(which(vals_P.2==2)) / length(vals_P.2)
-	Loc10_whole$pGrass_P.2[p] <- length(which(vals_P.2==3)) / length(vals_P.2)
-	Loc10_whole$pCrop_P.2[p] <- length(which(vals_P.2==1)) / length(vals_P.2)
-	Loc10_whole$pSettlem_P.2[p] <- length(which(vals_P.2==0)) / length(vals_P.2)
-	vals_P.3 <- unlist(raster::extract(lu_P.3, data.frame(Loc10_whole[p,c("long", "lat")]), buffer = 10000)) 
-	Loc10_whole$pForest_P.3[p] <- length(which(vals_P.3==2)) / length(vals_P.3)
-	Loc10_whole$pGrass_P.3[p] <- length(which(vals_P.3==3)) / length(vals_P.3)
-	Loc10_whole$pCrop_P.3[p] <- length(which(vals_P.3==1)) / length(vals_P.3)
-	Loc10_whole$pSettlem_P.3[p] <- length(which(vals_P.3==0)) / length(vals_P.3)
+	vals_P.1 <- raster::extract(lu_P.1, buff[p,])['Rowid']
+	Loc10_whole$pForest_P.1[p] <- length(which(vals_P.1==2)) / nrow(vals_P.1)
+	Loc10_whole$pGrass_P.1[p] <- length(which(vals_P.1==3)) / nrow(vals_P.1)
+	Loc10_whole$pCrop_P.1[p] <- length(which(vals_P.1==1)) / nrow(vals_P.1)
+	Loc10_whole$pSettlem_P.1[p] <- length(which(vals_P.1==0)) / nrow(vals_P.1)
+	vals_P.2 <- raster::extract(lu_P.2, buff[p,])['Rowid']
+	Loc10_whole$pForest_P.2[p] <- length(which(vals_P.2==2)) / nrow(vals_P.1)
+	Loc10_whole$pGrass_P.2[p] <- length(which(vals_P.2==3)) / nrow(vals_P.1)
+	Loc10_whole$pCrop_P.2[p] <- length(which(vals_P.2==1)) / nrow(vals_P.1)
+	Loc10_whole$pSettlem_P.2[p] <- length(which(vals_P.2==0)) / nrow(vals_P.1)
+	vals_P.3 <- raster::extract(lu_P.3, buff[p,])['Rowid']
+	Loc10_whole$pForest_P.3[p] <- length(which(vals_P.3==2)) / nrow(vals_P.1)
+	Loc10_whole$pGrass_P.3[p] <- length(which(vals_P.3==3)) / nrow(vals_P.1)
+	Loc10_whole$pCrop_P.3[p] <- length(which(vals_P.3==1)) / nrow(vals_P.1)
+	Loc10_whole$pSettlem_P.3[p] <- length(which(vals_P.3==0)) / nrow(vals_P.1)
 }
 
 
@@ -478,8 +479,14 @@ ggsave('ClimaticVariationAcrossPeriods.jpeg')
 par(mfrow = c(1,4))
 par(mar = c(4,4,4,4))
 
+
+
 summary(Loc10_whole)
 n = length(Loc10_whole$tmp_seas.1_P.1[!is.na(Loc10_whole$tmp_seas.1_P.1)])
+
+
+
+jpeg('plots/ClimaticVariationsAcrossPeriods.newplots.jpeg', quality = 75)
 
 mu <- c(mean(Loc10_whole$tmp_seas.1_P.1, na.rm = T), mean(Loc10_whole$tmp_seas.1_P.2, na.rm = T), mean(Loc10_whole$tmp_seas.1_P.3, na.rm = T))
 CIs <-1.96*c(sd(Loc10_whole$tmp_seas.1_P.1, na.rm = T), sd(Loc10_whole$tmp_seas.1_P.2, na.rm = T),sd(Loc10_whole$tmp_seas.1_P.3, na.rm = T))/sqrt(n)
@@ -505,7 +512,7 @@ h <- barplot(mu, xlab="Period", ylab="Change in summer precipitation seasonality
 arrows(h, mu-CIs, h, mu+CIs, code=3, length=0.05, angle=90)
 box()
 
-ggsave('plots/LandUseVariationAcrossPeriods.newplots.jpeg')
+ggsave('plots/ClimaticVariationsAcrossPeriods.newplots.jpeg')
 
 
 #########################
@@ -537,7 +544,7 @@ h <- barplot(mu, xlab="Period", ylab="Change in urban area cover", names.arg = c
 arrows(h, mu-CIs, h, mu+CIs, code=3, length=0.05, angle=90)
 box()
 
-ggsave('LandUseVariationAcrossPeriods.newplots.jpeg')
+ggsave('plots/LandUseVariationAcrossPeriods.newplots.jpeg')
 
 
 ################################################################################

@@ -14,7 +14,7 @@ sf_UK  <- ne_states(country = 'United Kingdom', returnclass = "sf")
 sf_UK <- subset(sf_UK, !(name %in% c('Orkney','Shetland Islands') | region %in% c('Northern Ireland','')))
 
 ## Main table with all the species traits, range shift etc
-setwd("F:/TheseSwansea/TraitStudy/Github")
+setwd("E:/TheseSwansea/TraitStudy/Github")
 species_traits <- read.csv('data/SpecTrait_full_062023_156sp.csv', stringsAsFactors = FALSE, row.names = 1)
 
 # Marine or non marine species : (Marine = >75% of points within 20km of the coastline)
@@ -64,12 +64,12 @@ BTO_distrib <- read.csv("data/distributions.csv", header=T) # period, sp code, s
 library(dplyr)
 # Mean coordinates of each grid cell
 Coord10 <- as_tibble(BTO_grid) %>%
-  filter(resolution==10 & order<5) %>%
-  group_by(grid) %>%
-  summarise(long = mean(long), lat = mean(lat))
+  dplyr::filter(resolution==10 & order<5) %>%
+  dplyr::group_by(grid) %>%
+  dplyr::summarise(long = mean(long), lat = mean(lat))
 
 # Location data 
-Loc10 <- BTO_distrib %>% dplyr::select(grid) %>% distinct(grid)
+Loc10 <- BTO_distrib %>% select(grid) %>% distinct(grid)
 # Join coordinates to location data
 Loc10 <- Loc10 %>%  left_join(Coord10)
 # Filter missing coordinates
@@ -78,14 +78,14 @@ Loc10 <- Loc10 %>%  filter(!is.na(long) & !is.na(lat))
 Loc10 = subset(Loc10, lat < 58.7)
 
 # Subset distribution data to Britain
-BTO_distrib <- as_tibble(BTO_distrib) %>% filter(island=="B" & season=="B" & resolution==10)
+BTO_distrib <- as_tibble(BTO_distrib) %>% dplyr::filter(island=="B" & season=="B" & resolution==10)
 BTO_distrib$periodN <- paste0("P.", as.numeric(droplevels(as.factor(BTO_distrib$period))))
 BTO_distrib$Spec <- paste0("Sp", BTO_distrib$speccode)
 BTO_distrib$Pres <- 1
 
 # Join coordinates to occurrence data
 BTO_distrib <- BTO_distrib %>%  left_join(Loc10, by='grid')
-BTO_distrib <- BTO_distrib %>% filter(!is.na(long) & !is.na(lat))
+BTO_distrib <- BTO_distrib %>% dplyr::filter(!is.na(long) & !is.na(lat))
 
 BTO_distrib = merge(Loc10, BTO_distrib, all.y = T)
 
@@ -317,7 +317,7 @@ Southern.dist = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") + geom_poin
 l1 = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") + geom_point(data = loc, aes(x = long, y = lat, colour = period), size = 2, shape = 15) +
   scale_color_manual(name = "Time period",values = c("black", "gray57","#CC6677","#88CCEE")) + 
   guides(colour = guide_legend(override.aes = list(size = 7))) +
-  theme(legend.direction = "vertical", legend.box = "vertical", legend.text=element_text(size=20), legend.key.size = unit(1.5, 'cm'))
+  theme(legend.direction = "vertical", legend.box = "vertical", legend.text=element_text(size=22), legend.title=element_text(size=22), legend.key.size = unit(1.5, 'cm'))
 leg1 <- get_legend(l1)
 
 l2 = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") +   
@@ -325,7 +325,7 @@ l2 = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") +
   scale_color_manual(name = "Range edge",values = c("#CC6677","#88CCEE")) + 
   labs(linetype = 'Time period') +
   guides(colour = guide_legend(override.aes = list(size = 7))) +
-  theme(legend.direction = "vertical", legend.box = "vertical", legend.text=element_text(size=20), legend.key.size = unit(1.5, 'cm'))
+  theme(legend.direction = "vertical", legend.box = "vertical", legend.text=element_text(size=22), legend.title=element_text(size=22), legend.key.size = unit(1.5, 'cm'))
 leg2 <- get_legend(l2)
 
 library(patchwork)
@@ -333,7 +333,7 @@ blank_p <- plot_spacer() + theme_void()
 leg12 <- plot_grid(leg1,leg2,blank_p,ncol = 1)
 
 ggarrange(Southern.dist, leg12, Northern.dist, widths = c(1,0.05,1), heights = c(1,0.3,1), nrow = 1)
-ggsave('plots/NS.DistChange.Mainland.2.0.jpeg', width = 11, height = 7, scale = 2.3, dpi = 500, bg= 'transparent')
+ggsave('plots/NS.DistChange.Mainland.2.0.jpeg', width = 12, height = 7, scale = 2, dpi = 800, bg= 'transparent')
 
 
 
