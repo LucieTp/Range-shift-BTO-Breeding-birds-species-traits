@@ -282,7 +282,6 @@ Northern.dist = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") + geom_poin
 
 # SOUTHERN SPECIES
 loc = merge(Loc10, BTO_distrib[which(BTO_distrib$speccode == 272),])
-# loc = merge(Loc10, BTO_distrib[which(BTO_distrib$speccode == 66),]) # 46, 66 for species in supplementary
 
 loc$Edge = NA
 loc$Edge[which(loc$period == "1968-72")] = ifelse(loc$lat[which(loc$period == "1968-72")] %in% tail(sort(loc$lat[which(loc$period == "1968-72")]), 20), "Leading", 
@@ -316,10 +315,64 @@ library(patchwork)
 blank_p <- plot_spacer() + theme_void()
 leg12 <- plot_grid(leg1,leg2,blank_p,ncol = 1)
 
-# ggsave('plots/NS.DistChange.Gadwall46.jpeg', scale = 2.5, dpi = 500, bg= 'transparent')
 
 ggarrange(Southern.dist, leg12, Northern.dist, widths = c(1,0.05,1), heights = c(1,0.3,1), nrow = 1)
 ggsave('plots/NS.DistChange.WholeStudy.2.0.jpeg', width = 12, height = 7, scale = 2, dpi = 800, bg= 'transparent')
+
+
+################################################################################
+### supplementary figures S2.1
+loc66 = merge(Loc10, BTO_distrib[which(BTO_distrib$speccode == 66),]) # 46, 66 for species in supplementary
+loc66$Edge = NA
+loc66$Edge[which(loc66$period == "1968-72")] = ifelse(loc66$lat[which(loc66$period == "1968-72")] %in% tail(sort(loc66$lat[which(loc66$period == "1968-72")]), 20), "Leading", 
+                                                  ifelse(loc66$lat[which(loc66$period == "1968-72")] %in% head(sort(loc66$lat[which(loc66$period == "1968-72")]), 20), "Rear", "Middle"))
+loc66$Edge[which(loc66$period == "2008-11")] = ifelse(loc66$lat[which(loc66$period == "2008-11")] %in% tail(sort(loc66$lat[which(loc66$period == "2008-11")]), 20), "Leading", 
+                                                  ifelse(loc66$lat[which(loc66$period == "2008-11")] %in% head(sort(loc66$lat[which(loc66$period == "2008-11")]), 20), "Rear", "Middle"))
+
+loc46 = merge(Loc10, BTO_distrib[which(BTO_distrib$speccode == 46),]) # 46, 66 for species in supplementary
+loc46$Edge = NA
+loc46$Edge[which(loc46$period == "1968-72")] = ifelse(loc46$lat[which(loc46$period == "1968-72")] %in% tail(sort(loc46$lat[which(loc46$period == "1968-72")]), 20), "Leading", 
+                                                      ifelse(loc46$lat[which(loc46$period == "1968-72")] %in% head(sort(loc46$lat[which(loc46$period == "1968-72")]), 20), "Rear", "Middle"))
+loc46$Edge[which(loc46$period == "2008-11")] = ifelse(loc46$lat[which(loc46$period == "2008-11")] %in% tail(sort(loc46$lat[which(loc46$period == "2008-11")]), 20), "Leading", 
+                                                      ifelse(loc46$lat[which(loc46$period == "2008-11")] %in% head(sort(loc46$lat[which(loc46$period == "2008-11")]), 20), "Rear", "Middle"))
+
+
+dist_66 = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") + geom_point(data = loc66, aes(x = long, y = lat, colour = period), size = 1.5, shape = 15) + 
+  stat_ellipse(data = loc66[which(loc66$Edge %in% c("Leading","Rear")),], aes(x = long, y = lat, colour = Edge, linetype = period), size = 2) +
+  geom_hline(yintercept = max(Loc10$lat), linetype="dashed", size = 2) + geom_hline(yintercept = min(BTO_distrib$lat), linetype="dashed", size = 2) + 
+  ggtitle("Gadwall - Mareca strepera") + ylab("") + xlab("") + theme_classic(base_size =  23) + xlim(min(loc66$long) - 1, max(Coord10$long)) + scale_colour_manual(values = c("black", "gray57","#CC6677","#88CCEE")) +
+  theme(legend.direction = "vertical", legend.box = "horizontal") +
+  theme(legend.position = "none")
+
+dist_46 = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") + geom_point(data = loc46, aes(x = long, y = lat, colour = period), size = 1.5, shape = 15) + 
+  stat_ellipse(data = loc46[which(loc46$Edge %in% c("Leading","Rear")),], aes(x = long, y = lat, colour = Edge, linetype = period), size = 2) +
+  geom_hline(yintercept = max(Loc10$lat), linetype="dashed", size = 2) + geom_hline(yintercept = min(BTO_distrib$lat), linetype="dashed", size = 2) + 
+  ggtitle("Mute swan - Cygnus olor") + ylab("") + xlab("") + theme_classic(base_size =  23) + xlim(min(loc46$long) - 1, max(Coord10$long)) + scale_colour_manual(values = c("black", "gray57","#CC6677","#88CCEE")) +
+  theme(legend.direction = "vertical", legend.box = "horizontal") +
+  theme(legend.position = "none")
+
+
+l1 = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") + geom_point(data = loc, aes(x = long, y = lat, colour = period), size = 2, shape = 15) +
+  scale_color_manual(name = "Time period",values = c("black", "gray57","#CC6677","#88CCEE")) + 
+  guides(colour = guide_legend(override.aes = list(size = 7))) +
+  theme(legend.direction = "vertical", legend.box = "vertical", legend.text=element_text(size=22), legend.title=element_text(size=22), legend.key.size = unit(1.5, 'cm'))
+leg1 <- get_legend(l1)
+
+l2 = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") +   
+  stat_ellipse(data = loc[which(loc$Edge %in% c("Leading","Rear")),], aes(x = long, y = lat, colour = Edge, linetype = period), size = 2) +
+  scale_color_manual(name = "Range edge",values = c("#CC6677","#88CCEE")) + 
+  labs(linetype = 'Time period') +
+  guides(colour = guide_legend(override.aes = list(size = 7))) +
+  theme(legend.direction = "vertical", legend.box = "vertical", legend.text=element_text(size=22), legend.title=element_text(size=22), legend.key.size = unit(1.5, 'cm'))
+leg2 <- get_legend(l2)
+
+library(patchwork)
+blank_p <- plot_spacer() + theme_void()
+leg12 <- plot_grid(leg1,leg2,blank_p,ncol = 1)
+
+ggarrange(dist_66, leg12, dist_46, widths = c(1,0.05,1), heights = c(1,0.3,1), nrow = 1)
+
+ggsave('plots/NS.DistChange.Gadwall46_Swan66.pdf', scale = 4.5)
 
 
 ################################################################################
@@ -684,6 +737,12 @@ g1 = ggplot(data = biogeo.mainland[which(biogeo.mainland$model == "northern"),],
   scale_colour_manual(values= safe_colorblind_palette) + theme_bw(base_size = 25) + 
   theme(axis.ticks = element_blank()) + geom_hline(yintercept = seq(2.5,5.5,2), colour = 'grey', linetype = 'longdash') + guides(size = 'none', shape = 'none')
 
+img = png::readPNG("plots/NorthernDist.Mainland (2).png")
+img = grid::rasterGrob(img, interpolate=TRUE)
+
+g1 = g1 + annotation_custom(img, xmin=0, xmax=100, ymin=-2, ymax=8) +
+  geom_point()
+
 g2 = ggplot(data = biogeo.mainland[which(biogeo.mainland$model == "southern"),], aes(x = estimate_mean, y = paste(covariate,shift), colour = shift, shape = model, label = significance)) + 
   geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0.5, vjust=0.2,show.legend=FALSE, size = 10) + 
   xlab("Estimate") + ylab('') +
@@ -692,6 +751,12 @@ g2 = ggplot(data = biogeo.mainland[which(biogeo.mainland$model == "southern"),],
   ggtitle('b. Southern species - mainland')+ scale_colour_manual(values= safe_colorblind_palette) + theme_bw(base_size = 25) + 
   xlim(min(biogeo.mainland$CI_lo), max(biogeo.mainland$CI_up)) +
   theme(axis.ticks = element_blank())  + geom_hline(yintercept = seq(2.5,5.5,2), colour = 'grey', linetype = 'longdash')+ guides(size = 'none', shape = 'none')
+
+img = png::readPNG("plots/SouthernDist.Mainland (2).png")
+img = grid::rasterGrob(img, interpolate=TRUE)
+
+g2 = g2 + annotation_custom(img, xmin=-140, xmax=-20, ymin=-3.5, ymax=8) +
+  geom_point()
 
 g3 = ggplot(data = biogeo.mainland[which(biogeo.mainland$model == "Passeriformes"),], aes(x = estimate_mean, y = paste(covariate,shift), colour = shift, shape = model, label = significance)) + 
   geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0.5, vjust=0.2,show.legend=FALSE, size = 10) + 
@@ -714,7 +779,59 @@ library(ggpubr)
 ggarrange(g1,g3,g2,g4, common.legend = T, widths = c(1.4,1))
 
 library(cowplot)
-ggsave2('plots/ModelEstimates_Biogeo.Mainland.jpeg', scale = 2.5, dpi = 500, width = 8)
+ggsave2('plots/ModelEstimates_Biogeo.Mainland.pdf', scale = 4.5)
+
+
+##################################
+### BIOGEOGRAPHICAL COVARIATES - whole study region
+### FIGURE S2.9
+
+biogeo$shift = factor(biogeo$shift, levels = c('rear edge shift', 'leading edge shift'))
+# levels(biogeo$shift) = c('rear edge shift', 'leading edge shift', 'expansion')
+biogeo$linesize = ifelse(biogeo$significance %in% c(''), 1, 1.5)
+
+labels.biogeo = c('','Northern boundary effect','','Southern boundary effect','','Range size','')
+
+g1 = ggplot(data = biogeo[which(biogeo$model == "northern"),], aes(x = estimate_mean, y = paste(covariate,shift), colour = shift, shape = model, label = significance)) + 
+  geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0.5, vjust=0.2,show.legend=FALSE, size = 10) + 
+  geom_errorbarh(aes(y = paste(covariate,shift), xmin = CI_lo, xmax = CI_up, size = linesize), height = .3) + 
+  xlab("Estimate")+  ylab('') + ggtitle('a. Northern species- whole study') + xlim(min(biogeo$CI_lo), max(biogeo$CI_up)) +
+  scale_y_discrete(labels = labels.biogeo) + 
+  scale_colour_manual(values= safe_colorblind_palette) + theme_bw(base_size = 25) + 
+  theme(axis.ticks = element_blank()) + geom_hline(yintercept = seq(2.5,5.5,2), colour = 'grey', linetype = 'longdash') + guides(size = 'none', shape = 'none')
+
+g2 = ggplot(data = biogeo[which(biogeo$model == "southern"),], aes(x = estimate_mean, y = paste(covariate,shift), colour = shift, shape = model, label = significance)) + 
+  geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0.5, vjust=0.2,show.legend=FALSE, size = 10) + 
+  xlab("Estimate") + ylab('') +
+  geom_errorbarh(aes(y = paste(covariate,shift), xmin = CI_lo, xmax = CI_up, size = linesize), height = .3) + 
+  scale_y_discrete(labels = labels.biogeo) + 
+  ggtitle('b. Southern species- whole study')+ scale_colour_manual(values= safe_colorblind_palette) + theme_bw(base_size = 25) + 
+  xlim(min(biogeo$CI_lo), max(biogeo$CI_up)) +
+  theme(axis.ticks = element_blank())  + geom_hline(yintercept = seq(2.5,5.5,2), colour = 'grey', linetype = 'longdash')+ guides(size = 'none', shape = 'none')
+
+g3 = ggplot(data = biogeo[which(biogeo$model == "Passeriformes"),], aes(x = estimate_mean, y = paste(covariate,shift), colour = shift, shape = model, label = significance)) + 
+  geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0.5, vjust=0.2,show.legend=FALSE, size = 10) + 
+  xlab("Estimate") +  ylab('') + geom_errorbarh(aes(y = paste(covariate,shift), xmin = CI_lo, xmax = CI_up, size = linesize), height = .3) + 
+  scale_y_discrete(labels = labels.biogeo) + 
+  ggtitle('c. Passeriformes- whole study')+ scale_colour_manual(values= safe_colorblind_palette) + theme_bw(base_size = 25) + 
+  xlim(min(biogeo$CI_lo), max(biogeo$CI_up)) +
+  theme(axis.ticks = element_blank(),axis.text.y = element_blank())  + geom_hline(yintercept = seq(2.5,5.5,2), colour = 'grey', linetype = 'longdash')+ guides(size = 'none', shape = 'none')
+
+g4 = ggplot(data = biogeo[which(biogeo$model == "terrestrial"),], aes(x = estimate_mean, y = paste(covariate,shift), colour = shift, shape = model, label = significance)) + 
+  geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0.5, vjust=0.2,show.legend=FALSE, size = 10) + 
+  xlab("Estimate") +  ylab('') + geom_errorbarh(aes(y = paste(covariate,shift), xmin = CI_lo, xmax = CI_up, size = linesize), height = .3) + 
+  scale_y_discrete(labels = labels.biogeo) + 
+  ggtitle('d. All species- whole study')+ scale_colour_manual(values= safe_colorblind_palette) + theme_bw(base_size = 25) + 
+  xlim(min(biogeo$CI_lo), max(biogeo$CI_up)) +
+  theme(axis.ticks = element_blank(),axis.text.y = element_blank())  + geom_hline(yintercept = seq(2.5,5.5,2), colour = 'grey', linetype = 'longdash')+ guides(size = 'none', shape = 'none')
+
+library(ggpubr)
+## Figure S2 - Estimates from GLMM 
+ggarrange(g1,g3,g2,g4, common.legend = T, widths = c(1.4,1))
+
+library(cowplot)
+ggsave2('plots/ModelEstimates_biogeo-wholestudy.pdf', scale = 4.5)
+
 
 ################################################################################
 ### SPECIES TRAITS - no expansion
@@ -735,6 +852,10 @@ traits_nodiff$CovShift = paste(traits_nodiff$covariate, traits_nodiff$shift)
 # pc2 env: temperature + winter precipitation
 # pc1 env: summer precipiation
 g1 = ggplot(data = traits_nodiff[which(traits_nodiff$model == "northern"),], aes(x = estimate_mean, y = CovShift, colour = shift, label = significance)) + geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0.5, vjust=0.2,show.legend=FALSE, size = 10) + xlab("Estimate") + ylab("") + ggtitle('Whole study') + geom_errorbarh(aes(y = CovShift, xmin = CI_lo, xmax = CI_up, size = linesize), height = .1, alpha = .8) + xlim(min(traits[,'CI_lo']),max(traits[,'CI_up'])) + scale_y_discrete(labels = labels) + scale_colour_manual(values= safe_colorblind_palette) + theme_bw(base_size = 20) + theme(axis.ticks = element_blank())  + geom_hline(yintercept = seq(2.5,20.5,2), colour = 'grey', linetype = 'longdash')+ guides(size = 'none') 
+img = png::readPNG("plots/NorthernDist.Mainland (2).png")
+img = grid::rasterGrob(img, interpolate=TRUE)
+
+
 g2 = ggplot(data = traits_nodiff[which(traits_nodiff$model == "southern"),], aes(x = estimate_mean, y = CovShift, colour = shift, label = significance)) + geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0.5, vjust=0.2,show.legend=FALSE, size = 10) + xlab("Estimate") + ylab("") + ggtitle('Whole study') + geom_errorbarh(aes(y = CovShift, xmin = CI_lo, xmax = CI_up, size = linesize), height = .1, alpha = .8) + xlim(min(traits[,'CI_lo']),max(traits[,'CI_up'])) + scale_y_discrete(labels = labels) + scale_colour_manual(values= safe_colorblind_palette) + theme_bw(base_size = 20) + theme(axis.ticks = element_blank())  + geom_hline(yintercept = seq(2.5,20.5,2), colour = 'grey', linetype = 'longdash')+ guides(size = 'none') 
 g3 = ggplot(data = traits_nodiff[which(traits_nodiff$model == "Passeriformes"),], aes(x = estimate_mean, y = CovShift, colour = shift, label = significance)) + geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0.5, vjust=0.2,show.legend=FALSE, size = 10) + xlab("Estimate") + ylab("") + ggtitle('Whole study') + geom_errorbarh(aes(y = CovShift, xmin = CI_lo, xmax = CI_up, size = linesize), height = .1, alpha = .8) + xlim(min(traits[,'CI_lo']),max(traits[,'CI_up'])) + scale_y_discrete(labels =labels) + scale_colour_manual(values= safe_colorblind_palette) + theme_bw(base_size = 20) + theme(axis.ticks = element_blank())  + geom_hline(yintercept = seq(2.5,20.5,2), colour = 'grey', linetype = 'longdash')+ guides(size = 'none')
 g4 = ggplot(data = traits_nodiff[which(traits_nodiff$model == "terrestrial"),], aes(x = estimate_mean, y = CovShift, colour = shift, label = significance)) + geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0.5, vjust=0.2,show.legend=FALSE, size = 10) + xlab("Estimate") + ylab("") + ggtitle('Whole study') + geom_errorbarh(aes(y = CovShift, xmin = CI_lo, xmax = CI_up, size = linesize), height = .1, alpha = .8) + xlim(min(traits[,'CI_lo']),max(traits[,'CI_up'])) + scale_y_discrete(labels =labels) + scale_colour_manual(values= safe_colorblind_palette) + theme_bw(base_size = 20) + theme(axis.ticks = element_blank())  + geom_hline(yintercept = seq(2.5,20.5,2), colour = 'grey', linetype = 'longdash')+ guides(size = 'none')
@@ -757,8 +878,9 @@ g4.m = ggplot(data = traits_nodiff.mainland[which(traits_nodiff.mainland$model =
 
 
 ### put both mainland and whole study area together into one plot
-ggarrange(g1,g1.m,g3, g3.m, g2, g2.m, g4, g4.m, common.legend = T,
+fig = ggarrange(g1,g1.m,g3, g3.m, g2, g2.m, g4, g4.m, common.legend = T,
           ncol = 4, nrow = 2, widths = c(1.2,0.6,1.2,0.6), font.label = list(size = 20))
+annotate_figure(fig, img)
 
 ## Figure 3:
 ggsave('plots/ModelEstimates.nodiff.CI.WholeStudy.Mainland.jpeg', width = 10, scale = 2.4, dpi = 800, bg = "white")
@@ -801,24 +923,5 @@ wilcox.test(shift_min20_P.1.3_dist_km ~ PassNonPass, data = species_traits, alte
 wilcox.test(shift_max20_P.1.3_dist_km ~ migratory_binomial, data = species_traits, alternative = "less")
 wilcox.test(shift_min20_P.1.3_dist_km ~ migratory_binomial, data = species_traits, alternative = "less")
 
-
-
-################################################################################
-### Figure S1 - Effect of distance to either boundary 
-
-# color palette
-cbp1 <- c("#D9717D","#4DB6D0") 
-
-
-g1 = ggplot(subset(species_traits, Marine == 0), aes(y = shift_max20_P.1.3_dist_km, x = dist_N_km_max20_P.1)) + geom_point() +
-  geom_smooth(method = 'lm', se=T, colour="#D9717D") +
-  xlab("Distance between leading edge and the northern boundary") + ggtitle("2") + theme_minimal() + ylab('Leading edge shift (km)')
-
-g2 = ggplot(subset(species_traits, Marine == 0), aes(y = shift_min20_P.1.3_dist_km, x = dist_S_km_min20_P.1)) + geom_point() +
-  geom_smooth(method = 'lm', se=T, colour="#4DB6D0") +
-  xlab("Distance between rear edge and the southern boundary") + ggtitle("1") + theme_minimal() + ylab('Rear edge shift (km)')
-
-ggarrange(g1,g2)
-ggsave2('DistToBoundaries.jpeg', scale = 1.5)
 
 
