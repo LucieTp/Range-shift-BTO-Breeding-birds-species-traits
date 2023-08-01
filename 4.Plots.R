@@ -852,10 +852,6 @@ traits_nodiff$CovShift = paste(traits_nodiff$covariate, traits_nodiff$shift)
 # pc2 env: temperature + winter precipitation
 # pc1 env: summer precipiation
 g1 = ggplot(data = traits_nodiff[which(traits_nodiff$model == "northern"),], aes(x = estimate_mean, y = CovShift, colour = shift, label = significance)) + geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0.5, vjust=0.2,show.legend=FALSE, size = 10) + xlab("Estimate") + ylab("") + ggtitle('Whole study') + geom_errorbarh(aes(y = CovShift, xmin = CI_lo, xmax = CI_up, size = linesize), height = .1, alpha = .8) + xlim(min(traits[,'CI_lo']),max(traits[,'CI_up'])) + scale_y_discrete(labels = labels) + scale_colour_manual(values= safe_colorblind_palette) + theme_bw(base_size = 20) + theme(axis.ticks = element_blank())  + geom_hline(yintercept = seq(2.5,20.5,2), colour = 'grey', linetype = 'longdash')+ guides(size = 'none') 
-img = png::readPNG("plots/NorthernDist.Mainland (2).png")
-img = grid::rasterGrob(img, interpolate=TRUE)
-
-
 g2 = ggplot(data = traits_nodiff[which(traits_nodiff$model == "southern"),], aes(x = estimate_mean, y = CovShift, colour = shift, label = significance)) + geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0.5, vjust=0.2,show.legend=FALSE, size = 10) + xlab("Estimate") + ylab("") + ggtitle('Whole study') + geom_errorbarh(aes(y = CovShift, xmin = CI_lo, xmax = CI_up, size = linesize), height = .1, alpha = .8) + xlim(min(traits[,'CI_lo']),max(traits[,'CI_up'])) + scale_y_discrete(labels = labels) + scale_colour_manual(values= safe_colorblind_palette) + theme_bw(base_size = 20) + theme(axis.ticks = element_blank())  + geom_hline(yintercept = seq(2.5,20.5,2), colour = 'grey', linetype = 'longdash')+ guides(size = 'none') 
 g3 = ggplot(data = traits_nodiff[which(traits_nodiff$model == "Passeriformes"),], aes(x = estimate_mean, y = CovShift, colour = shift, label = significance)) + geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0.5, vjust=0.2,show.legend=FALSE, size = 10) + xlab("Estimate") + ylab("") + ggtitle('Whole study') + geom_errorbarh(aes(y = CovShift, xmin = CI_lo, xmax = CI_up, size = linesize), height = .1, alpha = .8) + xlim(min(traits[,'CI_lo']),max(traits[,'CI_up'])) + scale_y_discrete(labels =labels) + scale_colour_manual(values= safe_colorblind_palette) + theme_bw(base_size = 20) + theme(axis.ticks = element_blank())  + geom_hline(yintercept = seq(2.5,20.5,2), colour = 'grey', linetype = 'longdash')+ guides(size = 'none')
 g4 = ggplot(data = traits_nodiff[which(traits_nodiff$model == "terrestrial"),], aes(x = estimate_mean, y = CovShift, colour = shift, label = significance)) + geom_point(size = 3) + geom_vline(xintercept = 0) + geom_text(hjust=0.5, vjust=0.2,show.legend=FALSE, size = 10) + xlab("Estimate") + ylab("") + ggtitle('Whole study') + geom_errorbarh(aes(y = CovShift, xmin = CI_lo, xmax = CI_up, size = linesize), height = .1, alpha = .8) + xlim(min(traits[,'CI_lo']),max(traits[,'CI_up'])) + scale_y_discrete(labels =labels) + scale_colour_manual(values= safe_colorblind_palette) + theme_bw(base_size = 20) + theme(axis.ticks = element_blank())  + geom_hline(yintercept = seq(2.5,20.5,2), colour = 'grey', linetype = 'longdash')+ guides(size = 'none')
@@ -879,11 +875,38 @@ g4.m = ggplot(data = traits_nodiff.mainland[which(traits_nodiff.mainland$model =
 
 ### put both mainland and whole study area together into one plot
 fig = ggarrange(g1,g1.m,g3, g3.m, g2, g2.m, g4, g4.m, common.legend = T,
-          ncol = 4, nrow = 2, widths = c(1.2,0.6,1.2,0.6), font.label = list(size = 20))
-annotate_figure(fig, img)
+          ncol = 4, nrow = 2, widths = c(1.3,0.6,1.3,0.6), 
+          labels = c("a. Northern species", "", "c. Passeriformes", "", "b. Southern species", "", "d. All species"),
+          font.label = list(size = 20))
+
 
 ## Figure 3:
-ggsave('plots/ModelEstimates.nodiff.CI.WholeStudy.Mainland.jpeg', width = 10, scale = 2.4, dpi = 800, bg = "white")
+pdf("plots/ModelEstimates.nodiff.CI.WholeStudy.Mainland.pdf", width = 20, height = 12.5)
+fig
+
+## add in insets for northern and southern species
+img = png::readPNG("plots/NorthernDist.Mainland (2).png")
+img = grid::rasterGrob(img, interpolate=TRUE)
+grid::grid.draw(
+  grid::grobTree(img,
+                 vp = grid::viewport(x = unit(0.05, "npc"), 
+                                     y = unit(0.55, "npc"), 
+                                     width = unit(0.20, "npc"), 
+                                     height = unit(0.30, "npc"))))
+
+img = png::readPNG("plots/SouthernDist.Mainland (2).png")
+img = grid::rasterGrob(img, interpolate=TRUE)
+
+grid::grid.draw(
+  grid::grobTree(img,
+                 vp = grid::viewport(x = unit(0.05, "npc"), 
+                                     y = unit(0.1, "npc"), 
+                                     width = unit(0.20, "npc"), 
+                                     height = unit(0.30, "npc"))))
+dev.off()
+
+## Figure 3:
+ggsave('plots/ModelEstimates.nodiff.CI.WholeStudy.Mainland.jpeg', scale = 4)
 
 
 
