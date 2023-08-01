@@ -18,7 +18,7 @@ Change working directory to chosen location on your machine and run code as foll
 - utils.R and whois-functions.R are both annex scripts and contain functions to calculate trophic traits and translate the metaweb species' IDs to scientific name.
 They are sourced in the scripts 1, 2, 3 and 4.
 - All datasets are freely available (see data availability statement in main manuscript and below for URLs)
-- 
+
 ____________________________________________________________________________________________________________________________________________________________________________
 
 # Data availability
