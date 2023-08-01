@@ -1,6 +1,15 @@
 
-################################################################################
-### SLIGHTLY MODIFIED CODE BY KONSTANS 
+### this code is in support of Thompson et al. 2023 - 
+### Joint effects of species traits and environmental preferences on range edge shifts of British birds
+### published in Global Ecology and biogeography
+
+### it reads in and formats the BTO data, envrionmental data and 
+#### computes species' range shifts and species distribution models
+### for the whole study area
+
+#### Authors: Dr Konstans Wells and Lucie Thompson
+#### Computational Ecology Lab, Swansea University. UK.
+####
 
 
 setwd('F:/TheseSwansea/TraitStudy/Github')
@@ -11,8 +20,6 @@ library(ggplot2)
 library(tidyverse)
 library(rnaturalearth) # function ne_countries
 library(sf)
-
-# library(ncdf4)
 library(sdm)
 
 #sdm::installAll()
@@ -141,14 +148,12 @@ for (i in to_update){
 # c("Corvus cornix","Acanthis cabaret","Saxicola rubicola") # sous espèce de "Saxicola torquatus"
 
 ET[which(str_detect(ET$scientific_name, "Saxicola torquatus")),]$scientific_name = "Saxicola rubicola"
-ET[which(str_detect(ET$scientific_name, "Carduelis flammea")),]$scientific_name = "Acanthis cabaret" # lesser redpoll, common redpoll : acanthis flammea
+ET[which(str_detect(ET$scientific_name, "Carduelis flammea")),]$scientific_name = "Acanthis cabaret" 
 x = ET[which(str_detect(ET$scientific_name, "Corvus corone")),]
 x[,c("scientific_name")] = c("Corvus cornix")
 ET[length(ET)+1,] = x
 
-### can't find the last two species 
 
-# only two missing values now for migration strategy/ET instead of 23 in Spec1
 ET = rename(ET,english_name_ET = English)
 Spec = Spec %>%  left_join(ET[,-match(c("SpecID","BLFamilyLatin","BLFamilyEnglish","BLFamSequID"),colnames(ET))], by = c("scientific_name"))
 
@@ -156,7 +161,6 @@ summary(Spec)
 setwd(dir.analysis)
 #write.csv(Spec, file="SpecTrait_122021.csv") 
 
-# SpecTrait_122021.csv file with 160 species 
 
 nSpec <- nrow(Spec)
 spec_speccode <- Spec$speccode
@@ -167,10 +171,7 @@ spec_speccode <- Spec$speccode
 
 Sptraits_Loc = merge(Loc10, BTO_distrib[which(BTO_distrib$speccode %in% unique(Spec$speccode)),])
 
-### /!\ takes a very long time
 # gives the distance between the sp coordinate to the nearest shoreline (sf_UK) 
-# if need to do it again: think about only using grid cells from P.1 ?
-
 Sptraits_Loc_sf <- Sptraits_Loc %>% st_as_sf(coords = c('long','lat')) %>%
   st_set_crs(crs(sf_UK))
 
@@ -195,10 +196,10 @@ prop_marine = df %>%
             nb_grid_20km = sum(dist_km<20),
             prop_Marine20km = nb_grid_20km/nb_grid*100) %>% ungroup()
 
-#species_traits <- read.csv('E:/TheseSwansea/TraitStudy/code_Miguel/SpecTrait_11012022_159sp.csv', stringsAsFactors = FALSE, row.names = 1)
-#species_traits_prop = merge(species_traits, prop_marine)
+# species_traits <- read.csv('E:/TheseSwansea/TraitStudy/code_Miguel/SpecTrait_11012022_159sp.csv', stringsAsFactors = FALSE, row.names = 1)
+species_traits_prop = merge(species_traits, prop_marine)
 
-#write.csv(species_traits_prop,"Speciestraits_ProportionMarineBTOsp_159sp.csv")
+# write.csv(species_traits_prop,"Speciestraits_ProportionMarineBTOsp_159sp.csv")
 
 # ## check by plotting species that we consider "Marine"
 # par(mar = c(2, 2, 2, 2))
@@ -215,7 +216,7 @@ prop_marine = df %>%
 
 #####################
 #
-# Environmental covariate preparation
+# Environmental covariate preparation for SDMs
 #
 #####################
 
@@ -702,23 +703,6 @@ write.csv(df_SDM.varimp, file="df_SDM.varimp_210707.csv")
 
 load("df_SDM.varimp.RData")
 
-
-
-#####################
-# Compute range shift metrics
-
-df_joint <- as.tibble(df_rangeshift)
-df_joint <- df_joint %>% left_join(df_SDM.varimp) %>% left_join(Spec)
-df_joint <- df_joint[, c(grep("speccode", names(df_joint)), grep("shift", names(df_joint)), grep("AUCtest", names(df_joint)), grep("Diet", names(df_joint)), grep("ForStrat", names(df_joint)))]
-df_joint <- df_joint %>% select(- c("ForStrat.Source", "ForStrat.EnteredBy", "ForStrat.SpecLevel", "Diet.Source", "Diet.Certainty", "Diet.EnteredBy"))
-df_joint$Diet.5Cat <- as.factor(df_joint$Diet.5Cat)
-df_joint <- data.frame(df_joint)
-
-sel_gbm.x <- c(grep("AUCtest", names(df_joint)), grep("Diet", names(df_joint)), grep("ForStrat", names(df_joint)))
-
-sel_gbm.x <- which(!is.na(match(names(df_joint), c("AUCtest_tmp_seas.2_P.3", "AUCtest_tmp_seas.1_P.3", "AUCtest_pre_seas.2_P.3", "AUCtest_pre_seas.1_P.3", "AUCtest_pForest_P.3","AUCtest_pGrass_P.3","AUCtest_pCrop_P.3","AUCtest_pSettlem_P.2",  "ForStrat.canopy"))))
-
-fit_BRT <- gbm.step(data=data.frame(df_joint), gbm.x = sel_gbm.x, gbm.y = which(names(df_joint)=="shift_max20_P.1.3"), family = "gaussian", step.size=2, learning.rate = 0.001)
 
 
 

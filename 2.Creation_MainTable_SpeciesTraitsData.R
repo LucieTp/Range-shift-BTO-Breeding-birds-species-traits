@@ -1,13 +1,12 @@
-#### 12/2021 Species Traits analysis based on 160 species
-#### filtered by GB + >50 grid cells in each time period + Breeding Atlas
 
+### this code is in support of Thompson et al. 2023 - 
+### Joint effects of species traits and environmental preferences on range edge shifts of British birds
+### published in Global Ecology and biogeography
 
+### it computes the species traits and creates the main data frame used in the models
+### for the whole study area
 
-####
-#### This script implements the analyses accompanying the paper: 'Species
-#### trait determine range shifts responses to warming in UK birds'
-####
-#### Author: Dr Miguel Lurgi
+#### Authors: Dr Miguel Lurgi and Lucie Thompson
 #### Computational Ecology Lab, Swansea University. UK.
 ####
 

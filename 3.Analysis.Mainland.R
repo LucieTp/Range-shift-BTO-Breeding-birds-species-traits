@@ -1,10 +1,11 @@
-### Script 3 - Thompson et al 2023
 
-
+### this code is in support of Thompson et al. 2023 - 
+### Joint effects of species traits and environmental preferences on range edge shifts of British birds
+### published in Global Ecology and biogeography
 
 ################################################################################
 ### This code runs the PGLMMs relating species range shift to species traits 
-### for three groups of species (North/South/Passeriformes)
+### for three groups of species (North/South/Passeriformes) for the mainland study area
 ###############################################################################
 
 

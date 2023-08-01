@@ -1,10 +1,15 @@
 
-####
-#### This script implements the analyses accompanying the paper: ''
-####
-#### Author: Dr Miguel Lurgi and Lucie Thompson
+### this code is in support of Thompson et al. 2023 - 
+### Joint effects of species traits and environmental preferences on range edge shifts of British birds
+### published in Global Ecology and biogeography
+
+### it computes the species traits and creates the main data frame used in the models
+### for the mainland study area
+
+#### Authors: Dr Miguel Lurgi and Lucie Thompson
 #### Computational Ecology Lab, Swansea University. UK.
 ####
+
 
 #### required libraries
 
