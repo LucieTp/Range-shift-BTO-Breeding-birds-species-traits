@@ -1,10 +1,13 @@
 ################################################################################
-### CODE FOR PLOTTING THE MAIN FIGURE, GENERATE THE TABLES AND SUPP FIGURES
+### This code generates most* of the figures in the paper both for the 
+### mainland and whole study area 
 ################################################################################
 
+### this code is in support of Thompson et al. 2023 - 
+### Joint effects of species traits and environmental preferences on range edge shifts of British birds
+### published in Global Ecology and biogeography
 
-
-
+### *Figures S2.2 and S2.3 are obtained in 1.BTO_breeding.atlas_range.shifts.Mainland.R
 
 ################################################################################
 ## IMPORTING THE DATA
@@ -450,7 +453,7 @@ ggsave('plots/NS.DistChange.Mainland.jpeg', width = 9, scale = 2.5, dpi = 500, b
 
 
 ################################################################################
-### for small png plots with no background in Figure 3 and supp
+### for generating small png plots with no background in Figure 3 and supp
 ################################################################################
 
 ##################
