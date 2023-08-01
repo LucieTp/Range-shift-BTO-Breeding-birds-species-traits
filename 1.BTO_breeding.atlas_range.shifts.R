@@ -158,8 +158,8 @@ ET = rename(ET,english_name_ET = English)
 Spec = Spec %>%  left_join(ET[,-match(c("SpecID","BLFamilyLatin","BLFamilyEnglish","BLFamSequID"),colnames(ET))], by = c("scientific_name"))
 
 summary(Spec)
-setwd(dir.analysis)
-#write.csv(Spec, file="SpecTrait_122021.csv") 
+# setwd(dir.analysis)
+# write.csv(Spec, file="SpecTrait_122021.csv") 
 
 
 nSpec <- nrow(Spec)
@@ -178,7 +178,8 @@ Sptraits_Loc_sf <- Sptraits_Loc %>% st_as_sf(coords = c('long','lat')) %>%
 #transform Iceland from polygon shape to line
 UK_line <- st_cast(sf_UK, "MULTILINESTRING")
 
-#calculation of the distance between the coast and our points
+# calculation of the distance between the coast and our points
+# /!\ take a few seconds
 d <- st_distance(UK_line, Sptraits_Loc_sf)
 df <- data.frame(dist_km = as.vector(d)/1000,
                  st_coordinates(Sptraits_Loc_sf), 
@@ -196,10 +197,7 @@ prop_marine = df %>%
             nb_grid_20km = sum(dist_km<20),
             prop_Marine20km = nb_grid_20km/nb_grid*100) %>% ungroup()
 
-# species_traits <- read.csv('E:/TheseSwansea/TraitStudy/code_Miguel/SpecTrait_11012022_159sp.csv', stringsAsFactors = FALSE, row.names = 1)
-species_traits_prop = merge(species_traits, prop_marine)
-
-# write.csv(species_traits_prop,"Speciestraits_ProportionMarineBTOsp_159sp.csv")
+write.csv(prop_marine,"data/Speciestraits_ProportionMarineBTOsp_159sp.csv")
 
 # ## check by plotting species that we consider "Marine"
 # par(mar = c(2, 2, 2, 2))

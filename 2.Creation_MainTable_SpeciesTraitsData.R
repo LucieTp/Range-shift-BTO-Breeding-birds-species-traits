@@ -21,7 +21,7 @@ library(foreign) # for read dbf
 
 #### In first script we ran SDMs for all the bird species using environmental and land use predictor variables
 
-setwd("E:/TheseSwansea/TraitStudy/Github/Range-shift-BTO-breeding-birds")
+setwd('F:/TheseSwansea/TraitStudy/Github')
 species_traits <- read.csv('data/SpecTrait_122021.csv', stringsAsFactors = FALSE, row.names = 1)
 
 #### reading the range shift data 
@@ -40,6 +40,7 @@ species_traits <- merge(species_traits, range_shifts)
 
 
 metaweb_europe <- read.graph('data/metaweb-europe.graphml', format = 'graphml')
+# /!\ takes a minute
 m <- as_adjacency_matrix(metaweb_europe, attr = 'copresence', sparse=FALSE)
 m[is.nan(m)] <- 0
 
@@ -57,11 +58,11 @@ setdiff(species_traits$scientific_name_ET_, V(metaweb_europe)$name)
 
 
 ## functions needed to compute network metrics
-source("whois-function.R")
-source("utils.R")
+source("Script/whois-function.R")
+source("Script/utils.R")
 
-europeRaster <- raster(x="mask10k/reference_grid_10km.img")
-cells_info <- read.dbf('mask10k/reference_grid_10km.img.vat.dbf')
+europeRaster <- raster(x="data/mask10k/reference_grid_10km.img")
+cells_info <- foreign::read.dbf('data/mask10k/reference_grid_10km.img.vat.dbf')
 
 ########################################################################################
 
@@ -289,7 +290,7 @@ g2 = fviz_eig(pca_env, addlabels = TRUE, title = 'Climatic variables')
 library(ggpubr)
 ggarrange(g1,g2)
 
-ggsave('ExplainedVariancePCA.jpeg', dpi = 600)
+ggsave('plots/ExplainedVariancePCA.jpeg', dpi = 600)
 
 ################################################################################
 ## MIGRATORY BEHAVIOUR

@@ -14,7 +14,7 @@ whois <- function(SPPCODE = NULL, SPPNAME = NULL) {
   if(is.null(SPPCODE) & is.null(SPPNAME)) stop("Must specify a species code or name(Genus_species)")
   if(!is.null(SPPCODE) & !is.null(SPPNAME)) stop("Must specify a species code or name(Genus_species)")
   
-  SppID <- read.table(file = "E:/TheseSwansea/Galiana2021_network-area-europe-master/SppID.txt", header = TRUE, stringsAsFactors = F)
+  SppID <- read.table(file = "F:/TheseSwansea/TraitStudy/Github/data/SppID.txt", header = TRUE, stringsAsFactors = F)
   
   if(length(SPPCODE) > 1){
     SPPCODE <- paste0(SPPCODE, "$", collapse = "|")
