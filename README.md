@@ -21,7 +21,7 @@ They are sourced in the scripts 1, 2, 3 and 4.
 
 ____________________________________________________________________________________________________________________________________________________________________________
 
-# Data availability
+## Data availability
 - Breeding and wintering bird distributions in Britain and Ireland from citizen science bird atlases (Gillings et al., 2019) can be accessed at https://www.bto.org/our-science/data/what-data-are-available
 - Climatic data (Climatic Research Unit (CRU) time series v.4.01 from 1901 to 2016) (Harris et al., 2020) can be accessed at https://catalogue.ceda.ac.uk/uuid/58a8802721c94c66ae45c3baa4d814d0
 - Land cover changes in Europe (HILDA version 2.0 from 1900 to 2010) (Fuchs et al., 2015) can be accessed at https://doi.pangaea.de/10.1594/PANGAEA.921846?format=html#download
