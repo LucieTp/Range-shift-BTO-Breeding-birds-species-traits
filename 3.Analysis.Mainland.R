@@ -89,13 +89,15 @@ sptree_match = read.csv("BigBird.All.NewNames.6714Taxa.tre/PhyloTree_speciesMatc
 names(sptree_match)[1] = "species"
 species_traits$species[match(sptree_match$scientific_name_,species_traits$scientific_name_)] = sptree_match$species
 
+pruned_tree <- drop.tip(tree, setdiff(tree$tip.label, species_traits$species))
+
 
 ################################################################################################################
 
 
 clean_names = list("log.BodyMass.Value" = "body mass (scaled)", "habitat_gen" = "Habitat generality",
                    "normalised_indegree" = "normalised indegree","diet_diversity" = "diet diveristy",
-                   "dist_N_km_max20_P.1" = "distance to norhern boundary","dist_S_km_min20_P.1" = "distance to southern boundary",
+                   "dist_N_km_max20_P.1" = "distance to northern boundary","dist_S_km_min20_P.1" = "distance to southern boundary",
                    "HWI" = "hand wing index","trophic_position" = "trophic position","outdegree" = "number of predators", 
                    "pc1_env" = "association with precipitation", "pc2_env" = "association with temperature", 
                    "pc1_lc" = "association with forest and grassland","pc2_lc" = "association with urban and agricultural areas", 
@@ -202,46 +204,44 @@ pglmm_shift = function(dta_list, mod){
     ###############################
     ## plotting
     
-    list.var = c('log.BodyMass.Value', 'habitat_gen', 'normalised_indegree', 'diet_diversity', 'dist_N_km_max20_P.1', 'dist_S_km_min20_P.1', 
-                 'trophic_position', 'outdegree', 'pc1_env', 'pc2_env', 'pc1_lc', 'pc2_lc', 'P.1')
+    pdf(file = paste0('F:/TheseSwansea/TraitStudy/Github/plots/visreg/',mod[model],'.pdf'), width = 10, height = 8)
     
-    for (shift in c('shift_max20_P.1.3_dist_km','shift_min20_P.1.3_dist_km','shift_diff')){
+    # if(mod[model] == "Passeriformes"){
+    #   par(mfrow = c(3,3))
+    # } else if (mod[model] == "Northern"){
+    #   par(mfrow = c(3,2))
+    # } else {par(mfrow = c(2,2))}
+    
+    par(mfrow = c(2,2))
+    
+    for (shift in c('shift_max20_P.1.3_dist_km','shift_min20_P.1.3_dist_km')){
       
       dta$Y = dta[,shift]
-      if (shift == 'shift_max20_P.1.3_dist_km'){mod.p = mod.max_shift_lm} else if (shift =='shift_min20_P.1.3_dist_km'){mod.p = mod.min_shift_lm} else {mod.p = mod.diff_shift_lm}
+      if (shift == 'shift_max20_P.1.3_dist_km'){
+        mod.p = mod.max_shift_lm; pvalue = p.value.max} 
+      else {
+        mod.p = mod.min_shift_lm; pvalue = p.value.min} 
       
       coef.all = mod.p$coefficients
-      pvalue = summary(mod.p)$coefficients[,4]
+      # pvalue = summary(mod.p)$coefficients[,4]
       
-      names.all = names(coef.all)[pvalue<0.1]
+      names.all = names(coef.all)[pvalue<=0.1]
       
       if("(Intercept)" %in% names.all){names.all = names.all[-1]}
       if("migratory_binomialMigrant" %in% names.all){names.all = names.all[-which(names.all == "migratory_binomialMigrant")]}
       
-      pdf(file = paste0('F:/TheseSwansea/TraitStudy/Github/plots/visreg/',mod[model],"_",shift,'.pdf'), width = 10, height = 8)
-      
-      if (length(names.all)>1){
-        par(mfrow = c(round(length(names.all)/2),2))
-        par(mar = c(5,5,5,5))
-      } else {par(mfrow = c(1,1)); par(mar = c(5,5,5,5))}
-      
-      
-
       if(length(names.all)>0){
         for(co in 1:length(names.all)){
-          
-          nn = regmatches(names.all[co], gregexpr("(?<=\\().*?(?=\\))", names.all[co], perl=T))[[1]]
-          n = clean_names[nn]
-          print(nn)
-          
-          visreg::visreg(mod.p, nn, xlab = unlist(n), ylab = unlist(clean_shifts[shift]), main = mod[model], cex.lab = 1.5, cex.main = 1.5)
-          # car::mcPlot(mod.p, variable = names[co], overlaid = F, ellipse=T, col.marginal='black', col.conditional= 'green4', title = F, new = F)
-          # The second conditional plot is the added-variable plot of e(Y|Z) versus e(X|Z) where e(a|b) means the Pearson residuals from the regression of a on b.
-          
+
+            nn = regmatches(names.all[co], gregexpr("(?<=\\().*?(?=\\))", names.all[co], perl=T))[[1]]
+            n = clean_names[nn]
+            print(nn)
+            
+            visreg::visreg(mod.p, nn, xlab = unlist(n), ylab = unlist(clean_shifts[shift]), cex.lab = 1.5)
         }
       }
-      dev.off()
     }
+    dev.off()
   }
   return(all_dta)
 }
@@ -317,15 +317,16 @@ format.res = function(data){
 
 ################################################################################################################
 
-mod = c("terrestrial",'northern','southern',"Passeriformes")
+mod = c("All species",'Northern','Southern',"Passeriformes")
 dta_list = list(
-  subset(species_traits, Marine == 0), # terrestrial
+  subset(species_traits, Marine == 0), # all species
   subset(species_traits, Marine == 0 & distrib.core == 'north'),
   subset(species_traits, Marine == 0 & distrib.core == 'south'),
   subset(species_traits, IOCOrder == "Passeriformes" & Marine == 0) # passeriformes
 )
 
 all_dta = pglmm_shift(dta_list, mod = mod)
+
 unique(all_dta$model)
 
 
