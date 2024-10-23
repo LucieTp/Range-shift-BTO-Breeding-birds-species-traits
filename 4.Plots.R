@@ -21,7 +21,7 @@ library(tidyr)
 library(stargazer)
 library(stringr)
 
-setwd("F:/TheseSwansea/TraitStudy/Github")
+setwd("E:/TheseSwansea/TraitStudy/Github")
 
 sf_UK  <- ne_states(country = 'United Kingdom', returnclass = "sf")
 sf_UK <- subset(sf_UK, !(region %in% c('Northern Ireland')))
@@ -319,8 +319,8 @@ blank_p <- plot_spacer() + theme_void()
 leg12 <- plot_grid(leg1,leg2,blank_p,ncol = 1)
 
 
-ggarrange(Southern.dist, leg12, Northern.dist, widths = c(1,0.05,1), heights = c(1,0.3,1), nrow = 1)
-ggsave('plots/NS.DistChange.WholeStudy.2.0.jpeg', width = 12, height = 7, scale = 2, dpi = 800, bg= 'transparent')
+g = ggarrange(Southern.dist, leg12, Northern.dist, widths = c(1,0.05,1), heights = c(1,0.3,1), nrow = 1)
+ggsave2(plot = g, filename = 'plots/Figure1a.png', width = 16, height = 10, dpi = 800, bg= 'transparent')
 
 
 ################################################################################
@@ -382,6 +382,7 @@ ggsave('plots/NS.DistChange.Gadwall46_Swan66.pdf', scale = 4.5)
 ### for the mainland study
 
 loc = merge(Loc10, BTO_distrib.mainland[which(BTO_distrib.mainland$speccode == 95),])
+loc$Edge = NA
 loc$Edge[which(loc$period == "1968-72")] = ifelse(loc$lat[which(loc$period == "1968-72")] %in% tail(sort(loc$lat[which(loc$period == "1968-72")]), 20), "Leading", 
                                                   ifelse(loc$lat[which(loc$period == "1968-72")] %in% head(sort(loc$lat[which(loc$period == "1968-72")]), 20), "Rear", "Middle"))
 
@@ -416,6 +417,7 @@ final_p
 # ggsave('plots/NorthernDist.Mainland.MainPlots.Dchange.jpeg', Northern.dist, scale = 2, dpi = 500, bg= 'transparent')
 
 loc = merge(Loc10, BTO_distrib.mainland[which(BTO_distrib.mainland$speccode == 272),])
+loc$Edge = NA
 loc$Edge[which(loc$period == "1968-72")] = ifelse(loc$lat[which(loc$period == "1968-72")] %in% tail(sort(loc$lat[which(loc$period == "1968-72")]), 20), "Leading", 
                                                   ifelse(loc$lat[which(loc$period == "1968-72")] %in% head(sort(loc$lat[which(loc$period == "1968-72")]), 20), "Rear", "Middle"))
 
@@ -447,9 +449,9 @@ leg12 <- plot_grid(leg1,leg2,blank_p,ncol = 1)
 final_p.south <- plot_grid(Southern.dist,leg12, rel_widths = c(1,0.1))
 final_p.south
 
-ggarrange(final_p.south, final_p, common.legend = T, widths = c(0.8,0.8))
+g = ggarrange(Southern.dist, leg12, Northern.dist, widths = c(1,0.05,1), heights = c(1,0.3,1), nrow = 1)
 
-ggsave('plots/NS.DistChange.Mainland.jpeg', width = 9, scale = 2.5, dpi = 500, bg= 'transparent')
+ggsave(plot = g, 'plots/Figure1b.png', width = 16, height = 10, dpi = 1000, bg= 'transparent')
 
 
 ################################################################################
@@ -479,7 +481,7 @@ Northern.dist = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") + geom_poin
     legend.box.background = element_rect(fill='transparent') #transparent legend panel
   )
 
-ggsave('plots/NorthernDist.WholeStudy.png', Northern.dist, scale = 1, dpi = 300, bg= 'transparent')
+ggsave('plots/NorthernDist.WholeStudy.png', Northern.dist, scale = 1, dpi = 1000, bg= 'transparent')
 
 loc = merge(Loc10, BTO_distrib[which(BTO_distrib$speccode == 272 & BTO_distrib$periodN == "P.1"),])
 loc$Edge = ifelse(loc$lat %in% tail(sort(loc$lat), 20), "Leading", ifelse(loc$lat %in% head(sort(loc$lat), 20), "Rear", "Middle"))
@@ -503,7 +505,7 @@ Southern.dist = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") + geom_poin
   )
 
 
-ggsave('plots/SouthernDist.WholeStudy.png', Southern.dist, scale = 1, dpi = 300, bg= 'transparent')
+ggsave('plots/SouthernDist.WholeStudy.png', Southern.dist, scale = 1, dpi = 1000, bg= 'transparent')
 
 ##################
 ## Mainland study
@@ -529,7 +531,7 @@ Northern.dist = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") + geom_poin
     legend.box.background = element_rect(fill='transparent') #transparent legend panel
   )
 
-ggsave('plots/NorthernDist.Mainland.png', Northern.dist, scale = 1, dpi = 300, bg= 'transparent')
+ggsave('plots/NorthernDist.Mainland.png', Northern.dist, scale = 1, dpi = 1000, bg= 'transparent')
 
 loc = merge(Loc10, BTO_distrib.mainland[which(BTO_distrib.mainland$speccode == 272 & BTO_distrib.mainland$periodN == "P.1"),])
 loc$Edge = ifelse(loc$lat %in% tail(sort(loc$lat), 20), "Leading", ifelse(loc$lat %in% head(sort(loc$lat), 20), "Rear", "Middle"))
@@ -552,7 +554,7 @@ Southern.dist = ggplot(data = sf_UK) + geom_sf(colour = "lightgrey") + geom_poin
     legend.box.background = element_rect(fill='transparent') #transparent legend panel
   )
 
-ggsave('plots/SouthernDist.Mainland.png', Southern.dist, scale = 1, dpi = 300, bg= 'transparent')
+ggsave('plots/SouthernDist.Mainland.png', Southern.dist, scale = 1, dpi = 1000, bg= 'transparent')
 
 
 
@@ -724,7 +726,7 @@ traits_nodiff.mainland = traits.mainland[which(traits.mainland$shift!='Expansion
 
 ##################################
 ### BIOGEOGRAPHICAL COVARIATES
-### FIGURE 2
+### FIGURE 3
 
 biogeo.mainland$shift = factor(biogeo.mainland$shift, levels = c('rear edge shift', 'leading edge shift'))
 # levels(biogeo$shift) = c('rear edge shift', 'leading edge shift', 'expansion')
@@ -779,9 +781,10 @@ g4 = ggplot(data = biogeo.mainland[which(biogeo.mainland$model == "terrestrial")
 
 library(ggpubr)
 ## Figure S2 - Estimates from GLMM 
-ggarrange(g1,g3,g2,g4, common.legend = T, widths = c(1.4,1))
+g = ggarrange(g1,g3,g2,g4, common.legend = T, widths = c(1.4,1))
 
-library(cowplot)
+ggsave(plot = g, filename = 'plots/ModelEstimates_Biogeo.Mainland.png', dpi = 800, width = 20, height = 13)
+
 ggsave2('plots/ModelEstimates_Biogeo.Mainland.pdf', scale = 4.5)
 
 
@@ -838,7 +841,7 @@ ggsave2('plots/ModelEstimates_biogeo-wholestudy.pdf', scale = 4.5)
 
 ################################################################################
 ### SPECIES TRAITS - no expansion
-### FIGURE 3
+### FIGURE 4
 
 labels = c('','Diet diversity','','Habitat generality','','Hand wing index','','Log 10 body mass','','Normalised number of prey','','Number of predators','','Association with precipitation','','Association with forest/grassland','','Association with temperature','','Association with urban area/cropland','','Trophic position','')
 
@@ -884,8 +887,8 @@ fig = ggarrange(g1,g1.m,g3, g3.m, g2, g2.m, g4, g4.m, common.legend = T,
 
 
 ## Figure 3:
-pdf("plots/ModelEstimates.nodiff.CI.WholeStudy.Mainland.pdf", width = 20, height = 12.5)
-fig
+# pdf("plots/ModelEstimates.nodiff.CI.WholeStudy.Mainland.pdf", width = 20, height = 12.5)
+
 
 ## add in insets for northern and southern species
 img = png::readPNG("plots/NorthernDist.Mainland (2).png")
@@ -909,7 +912,7 @@ grid::grid.draw(
 dev.off()
 
 ## Figure 3:
-ggsave('plots/ModelEstimates.nodiff.CI.WholeStudy.Mainland.jpeg', scale = 4)
+ggsave('plots/Figure4.png', dpi = 1000, width = 20, height = 12.5)
 
 
 
